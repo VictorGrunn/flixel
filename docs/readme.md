@@ -1,6 +1,6 @@
 #HaxeFlixel API Docs
 
-With Haxe installed open this directory in your command line and run ```nekotools server```, you can now open localhost:2000 in a browser and view.
+With Haxe installed in your command line navigate your cwd to ./flixel/docs/targets and run ```nekotools server```, you can now open localhost:2000 in a browser and view.
 
 ----
 
