@@ -1,0 +1,28 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"></meta><link href="http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/css/bootstrap-combined.min.css" rel="stylesheet"></link><script src="http://code.jquery.com/jquery-1.9.1.min.js"></script><script src="http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/js/bootstrap.min.js"></script><link href="/flash/styles.css" rel="stylesheet"></link><script type="text/javascript">var dox = {rootPath: "/flash",platforms: ["flash"]};</script><script type="text/javascript" src="/flash/nav.js"></script><script type="text/javascript" src="/flash/index.js"></script><link rel="icon" href="/flash/favicon.ico" type="image/x-icon"></link><title>package media</title></head><body><div class="navbar navbar-inverse navbar-fixed-top"><div class="navbar-inner"><form class="navbar-search pull-left" id="searchForm"><input id="search" type="text" class="search-query" placeholder="Search" autocomplete="off"></input></form><ul class="nav"><li id="select-platform" class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">Platform<b class="caret"></b></a><ul class="dropdown-menu"><li data="all"><a href="#">All Platforms</a></li><li data="flash"><a href="#">flash</a></li></ul></li></ul></div></div><div id="container"><div id="nav"></div><div id="content"><h1><span class="directive">package</span> flash.media</h1><table class="table table-condensed"><tbody><tr><td width="200"><a href="/flash/flash/media/ID3Info.html">ID3Info</a></td><td><p></p></td></tr><tr><td width="200"><a href="/flash/flash/media/Sound.html">Sound</a></td><td><p>The Sound class lets you work with sound in an application. The Sound class
+<em> lets you create a Sound object, load and play an external MP3 file into
+</em> that object, close the sound stream, and access data about the sound, such
+<em> as information about the number of bytes in the stream and ID3 metadata.
+</em> More detailed control of the sound is performed through the sound source
+<em>  -  the SoundChannel or Microphone object for the sound  -  and through the
+</em> properties in the SoundTransform class that control the output of the sound
+<em> to the computer's speakers.
+</em>
+<em> <p>In Flash Player 10 and later and AIR 1.5 and later, you can also use
+</em> this class to work with sound that is generated dynamically. In this case,
+<em> the Sound object uses the function you assign to a <code>sampleData</code>
+</em> event handler to poll for sound data. The sound is played as it is
+<em> retrieved from a ByteArray object that you populate with sound data. You
+</em> can use <code>Sound.extract()</code> to extract sound data from a Sound
+<em> object, after which you can manipulate it before writing it back to the
+</em> stream for playback.</p></td></tr><tr><td width="200"><a href="/flash/flash/media/SoundChannel.html">SoundChannel</a></td><td><p>The SoundChannel class controls a sound in an application. Every sound is
+<em> assigned to a sound channel, and the application can have multiple sound
+</em> channels that are mixed together. The SoundChannel class contains a
+<em> <code>stop()</code> method, properties for monitoring the amplitude
+</em> (volume) of the channel, and a property for assigning a SoundTransform
+<em> object to the channel.
+</em> 
+* @event soundComplete Dispatched when a sound has finished playing.</p></td></tr><tr><td width="200"><a href="/flash/flash/media/SoundLoaderContext.html">SoundLoaderContext</a></td><td><p>The SoundLoaderContext class provides security checks for files that load
+<em> sound. SoundLoaderContext objects are passed as an argument to the
+</em> constructor and the <code>load()</code> method of the Sound class.
+<em>
+</em> <p>When you use this class, consider the following security model: </p></td></tr><tr><td width="200"><a href="/flash/flash/media/SoundTransform.html">SoundTransform</a></td><td><p>The SoundTransform class contains properties for volume and panning.</p></td></tr></tbody></table></div></div></body></html>

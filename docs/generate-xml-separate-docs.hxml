@@ -1,0 +1,29 @@
+-lib flixel
+-lib openfl
+ImportAll
+--remap flash:flash
+--no-output
+-D display
+
+--each
+
+-swf all.swf
+-swf-version 11.8
+-xml ./targets/flash/flash.xml
+
+--next
+
+-cpp obj/docs
+-xml ./targets/cpp/cpp.xml
+-D xmldoc
+-D HXCPP_MULTI_THREADED
+
+--next
+
+-js all.js
+-xml ./targets/js/js.xml
+
+--next
+
+-neko all.n
+-xml ./targets/neko/neko.xml

@@ -1,0 +1,7 @@
+-cmd haxelib run dox -r /flash -o targets/flash/ -i targets/flash
+
+-cmd haxelib run dox -r /cpp -o targets/cpp/ -i targets/cpp
+
+-cmd haxelib run dox -r /js -o targets/js/ -i targets/js
+
+-cmd haxelib run dox -r /neko -o targets/neko/ -i targets/neko

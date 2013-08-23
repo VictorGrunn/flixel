@@ -1,0 +1,36 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"></meta><link href="http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/css/bootstrap-combined.min.css" rel="stylesheet"></link><script src="http://code.jquery.com/jquery-1.9.1.min.js"></script><script src="http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/js/bootstrap.min.js"></script><link href="/neko/styles.css" rel="stylesheet"></link><script type="text/javascript">var dox = {rootPath: "/neko",platforms: ["neko"]};</script><script type="text/javascript" src="/neko/nav.js"></script><script type="text/javascript" src="/neko/index.js"></script><link rel="icon" href="/neko/favicon.ico" type="image/x-icon"></link><title>Multitouch</title></head><body><div class="navbar navbar-inverse navbar-fixed-top"><div class="navbar-inner"><form class="navbar-search pull-left" id="searchForm"><input id="search" type="text" class="search-query" placeholder="Search" autocomplete="off"></input></form><ul class="nav"><li id="select-platform" class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">Platform<b class="caret"></b></a><ul class="dropdown-menu"><li data="all"><a href="#">All Platforms</a></li><li data="neko"><a href="#">neko</a></li></ul></li></ul></div></div><div id="container"><div id="nav"></div><div id="content"><div class="header"><h1><code><span class="directive">class </span><span class="type">flash.ui.Multitouch</span></code></h1></div><div class="body"><p class="availability">Available on all platforms</p><div class="doc"><p>The Multitouch class manages and provides information about the current
+<em> environment's support for handling contact from user input devices,
+</em> including contact that has two or more touch points(such as a user's
+<em> fingers on a touch screen). When a user interacts with a device such as a
+</em> mobile phone or tablet with a touch screen, the user typically touches the
+<em> screen with his or her fingers or a pointing device. While there is a broad
+</em> range of pointing devices, such as a mouse or a stylus, many of these
+<em> devices only have a single point of contact with an application. For
+</em> pointing devices with a single point of contact, user interaction events
+<em> can be handled as a mouse event, or using a basic set of touch events
+</em> (called "touch point" events). However, for pointing devices that have
+<em> several points of contact and perform complex movement, such as the human
+</em> hand, Flash runtimes support an additional set of event handling API called
+<em> gesture events. The API for handling user interaction with these gesture
+</em> events includes the following classes:
+<em>
+</em> <p>
+<em> <ul>
+</em>   <li>flash.events.TouchEvent</li>
+<em>   <li>flash.events.GestureEvent</li>
+</em>   <li>flash.events.GesturePhase</li>
+<em>   <li>flash.events.TransformGestureEvent</li>
+</em>   <li>flash.events.PressAndTapGestureEvent</li>
+<em> </ul>
+</em> </p>
+<em>
+</em> <p>Use the listed classes to write code that handles touch events. Use the
+<em> Multitouch class to determine the current environment's support for touch
+</em> interaction, and to manage the support of touch interaction if the current
+<em> environment supports touch input.</p>
+</em>
+<em> <p>You cannot create a Multitouch object directly from ActionScript code.
+</em> If you call <code>new Multitouch()</code>, an exception is thrown.</p>
+<em>
+</em> <p><b>Note:</b> The Multitouch feature is not supported for SWF files
+* embedded in HTML running on Mac OS.</p></p></div></div></div></div></body></html>

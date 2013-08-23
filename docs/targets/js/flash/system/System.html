@@ -1,0 +1,35 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"></meta><link href="http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/css/bootstrap-combined.min.css" rel="stylesheet"></link><script src="http://code.jquery.com/jquery-1.9.1.min.js"></script><script src="http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/js/bootstrap.min.js"></script><link href="/js/styles.css" rel="stylesheet"></link><script type="text/javascript">var dox = {rootPath: "/js",platforms: ["js"]};</script><script type="text/javascript" src="/js/nav.js"></script><script type="text/javascript" src="/js/index.js"></script><link rel="icon" href="/js/favicon.ico" type="image/x-icon"></link><title>System</title></head><body><div class="navbar navbar-inverse navbar-fixed-top"><div class="navbar-inner"><form class="navbar-search pull-left" id="searchForm"><input id="search" type="text" class="search-query" placeholder="Search" autocomplete="off"></input></form><ul class="nav"><li id="select-platform" class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">Platform<b class="caret"></b></a><ul class="dropdown-menu"><li data="all"><a href="#">All Platforms</a></li><li data="js"><a href="#">js</a></li></ul></li></ul></div></div><div id="container"><div id="nav"></div><div id="content"><div class="header"><h1><code><span class="directive">class </span><span class="type">flash.system.System</span></code></h1></div><div class="body"><p class="availability">Available on all platforms</p><div class="doc"><p>The System class contains properties related to local settings and
+<em> operations. Among these are settings for camers and microphones, operations
+</em> with shared objects and the use of the Clipboard.
+<em>
+</em> <p>Additional properties and methods are in other classes within the
+<em> flash.system package: the Capabilities class, the IME class, and the
+</em> Security class.</p>
+<em>
+</em> <p>This class contains only static methods and properties. You cannot
+* create new instances of the System class.</p></p></div><h2>Class Fields</h2><div class="platform platform-js"><a name="deviceID"></a><h3><code><span class="keyword">static</span> <span class="keyword">var</span> <a href="#deviceID"><span class="identifier">deviceID</span></a>:<a class="type" href="/js/String.html">String</a></code></h3><div class="doc"><p></p></div></div><div class="platform platform-js"><a name="totalMemory"></a><h3><code><span class="keyword">static</span> <span class="keyword">var</span> <a href="#totalMemory"><span class="identifier">totalMemory</span></a>:<a class="type" href="/js/Int.html">Int</a></code></h3><div class="doc"><p>The amount of memory(in bytes) currently in use that has been directly
+allocated by Flash Player or AIR.
+<em>
+<p>This property does not return <i>all</i> memory used by an Adobe AIR
+application or by the application(such as a browser) containing Flash
+Player content. The browser or operating system may consume other memory.
+The <code>System.privateMemory</code> property reflects <i>all</i> memory
+used by an application.</p>
+</em>
+<p>If the amount of memory allocated is greater than the maximum value for
+a uint object(<code>uint.MAX_VALUE</code>, or 4,294,967,295), then this
+property is set to 0. The <code>System.totalMemoryNumber</code> property
+allows larger values.</p></p></div></div><div class="platform platform-js"><a name="exit"></a><h3><code><span class="keyword">static</span> <span class="keyword">function</span> <a href="#exit"><span class="identifier">exit</span></a>(code:<a class="type" href="/js/Int.html">Int</a>):<a class="type" href="/js/Void.html">Void</a></code></h3><div class="doc"><p>Closes Flash Player.
+<em>
+</em> <p><i>For the standalone Flash Player debugger version only.</i></p>
+<em>
+</em> <p>AIR applications should call the <code>NativeApplication.exit()</code>
+<em> method to exit the application.</p>
+</em> 
+<em> @param code A value to pass to the operating system. Typically, if the
+</em>             process exits normally, the value is 0.</p></div></div><div class="platform platform-js"><a name="gc"></a><h3><code><span class="keyword">static</span> <span class="keyword">function</span> <a href="#gc"><span class="identifier">gc</span></a>():<a class="type" href="/js/Void.html">Void</a></code></h3><div class="doc"><p>Forces the garbage collection process.
+<em>
+</em> <p><i>For the Flash Player debugger version and AIR applications only.</i>
+<em> In an AIR application, the <code>System.gc()</code> method is only enabled
+</em> in content running in the AIR Debug Launcher(ADL) or, in an installed
+* applcation, in content in the application security sandbox.</p></p></div></div></div></div></div></body></html>
