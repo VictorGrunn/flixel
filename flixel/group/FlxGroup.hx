@@ -1,5 +1,6 @@
 package flixel.group;
 
+import flixel.group.FlxTypedGroup.IFlxTypedGroup;
 import flixel.FlxBasic;
 
 /**
@@ -7,7 +8,7 @@ import flixel.FlxBasic;
  * NOTE: Although <code>FlxGroup</code> extends <code>FlxBasic</code>, it will not automatically
  * add itself to the global collisions quad tree, it will only add its members.
  */
-class FlxGroup extends FlxTypedGroup<FlxBasic>
+class FlxGroup extends FlxTypedGroup<FlxBasic> implements IFlxTypedGroup<FlxBasic>
 {
 	/**
 	 * Create a new <code>FlxGroup</code>

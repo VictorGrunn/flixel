@@ -1,5 +1,6 @@
 package flixel.group;
 
+import flixel.group.FlxTypedGroup.IFlxTypedGroup;
 import flixel.FlxSprite;
 
 /**
@@ -7,7 +8,7 @@ import flixel.FlxSprite;
  * that can be treated like a <code>FlxSprite</code> due to having
  * x, y and alpha values. It can only contain <code>FlxSprites</code>.
  */
-class FlxSpriteGroup extends FlxTypedGroup<IFlxSprite> implements IFlxSprite
+class FlxSpriteGroup extends FlxTypedGroup<IFlxSprite> implements IFlxSprite implements IFlxTypedGroup<IFlxSprite>
 {
 	/**
 	 * Optimization to allow setting position of group without transforming children twice.

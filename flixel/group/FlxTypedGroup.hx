@@ -759,3 +759,39 @@ class FlxTypedGroup<T:IFlxBasic> extends FlxBasic
 		return maxSize;
 	}
 }
+
+/**
+*   Typed FlxGroup Interface
+*   Resolves auto completion with the use of Generics
+**/
+interface IFlxTypedGroup<T:IFlxBasic> {
+
+	var members(get, never):Array<T>;
+	var length:Int;
+	var autoReviveMembers:Bool;
+
+	function destroy():Void;
+	function update():Void;
+	function draw():Void;
+	function drawDebug():Void;
+	function add(Object:T):T;
+	function recycle(ObjectClass:Class<T> = null, ContructorArgs:Array<Dynamic> = null):T;
+	function remove(Object:T, Splice:Bool = false):T;
+	function replace(OldObject:T, NewObject:T):T;
+	function sort(Index:String = "y", Order:Int = -1):Void;
+	function setAll(VariableName:String, Value:Dynamic, Recurse:Bool = true):Void;
+	function callAll(FunctionName:String, Recurse:Bool = true):Void;
+	function getFirstAvailable(ObjectClass:Class<T> = null):T;
+	function getFirstNull():Int;
+	function getFirstExisting():T;
+	function getFirstAlive():T;
+	function getFirstDead():T;
+	function countLiving():Int;
+	function countDead():Int;
+	function getRandom(StartIndex:Int = 0, Length:Int = 0):T;
+	function clear():Void;
+	function kill():Void;
+	function revive():Void;
+
+	var maxSize(default, set):Int;
+}
