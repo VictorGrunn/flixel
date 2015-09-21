@@ -1,54 +1,65 @@
-﻿![](http://www.haxeflixel.com/sites/all/themes/haxeflixel_bootstrap/assets/images/haxeflixel-logo.png)
-=
-###Related:    [flixel-addons](https://github.com/HaxeFlixel/flixel-addons) | [flixel-demos](https://github.com/HaxeFlixel/flixel-demos) | [flixel-tools](https://github.com/HaxeFlixel/flixel-tools) | [flixel-ui](https://github.com/HaxeFlixel/flixel-ui)
-______________________________________________________
+[![](https://raw.github.com/HaxeFlixel/haxeflixel.com/master/src/files/images/flixel-logos/HaxeFlixel.png)](http://haxeflixel.com/)
 
-###Getting Started
+[flixel](https://github.com/HaxeFlixel/flixel) | [addons](https://github.com/HaxeFlixel/flixel-addons) | [ui](https://github.com/HaxeFlixel/flixel-ui) | [demos](https://github.com/HaxeFlixel/flixel-demos) | [tools](https://github.com/HaxeFlixel/flixel-tools) | [templates](https://github.com/HaxeFlixel/flixel-templates) | [docs](https://github.com/HaxeFlixel/flixel-docs) | [haxeflixel.com](https://github.com/HaxeFlixel/haxeflixel.com)
 
-You can read our getting started docs [here](http://haxeflixel.com/wiki/getting-started).
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE.md)
+[![Haxelib Version](https://img.shields.io/github/tag/HaxeFlixel/flixel.svg?style=flat&label=haxelib)](http://lib.haxe.org/p/flixel)
+[![Patreon](https://img.shields.io/badge/donate-patreon-blue.svg)](https://www.patreon.com/haxeflixel)
+[![Build Status](https://travis-ci.org/HaxeFlixel/flixel.png)](https://travis-ci.org/HaxeFlixel/flixel)
 
-It is recomended to use Haxeflixel via [Haxelib](http://lib.haxe.org/p/flixel). Just run `haxelib install flixel` once you have it installed.
+[![](showcase.png)](http://www.haxeflixel.com/showcase)
 
-###For Developers
+##Getting Started
 
-Make sure you're using latest version of [Haxe, HaxeLib and OpenFl](http://haxeflixel.com/comment/2584#comment-2584). Also bookmark the [haxelib guide](http://haxe.org/doc/haxelib/using_haxelib).
+[Click here to get started making games with HaxeFlixel.](http://haxeflixel.com/documentation/getting-started/)
 
-Clone this repository by running `haxelib git flixel https://github.com/HaxeFlixel/flixel`.
+HaxeFlixel is open source software developed by volunteers, [click here to meet the team!](https://github.com/orgs/HaxeFlixel/people)
 
-We recommended that you use a GUI application to manage your changes ([SourceTree](http://www.sourcetreeapp.com/)).
+If you're a developer and like what we're doing, [read the docs](#for-developers) and get involved.
 
-______________________________________________________
-###Links
+##Links
 
-In case you're looking for ressources, help, or just want to interact with the community:
+In case you're looking for resources, help, or just want to interact with the community:
 
 - [HaxeFlixel.com](http://www.haxeflixel.com/)
-- [Forums](http://www.haxeflixel.com/forum)
-- [Wiki](http://www.haxeflixel.com/wiki)
+  - [Forums](http://www.haxeflixel.com/forum)
+  - [Docs](http://www.haxeflixel.com/documentation)
+  - [API](http://api.haxeflixel.com/)
 - [@HaxeFlixel on Twitter](https://twitter.com/HaxeFlixel)
 - [#haxeflixel IRC channel](http://webchat.freenode.net/?channels=haxeflixel)
 
-______________________________________________________
+##About
 
 HaxeFlixel was created by Alexander Hohlov, also known as [Beeblerox](https://github.com/beeblerox) who continues to be the project lead. The codebase started largely from a Haxe port of the [AS3 version of Flixel](https://github.com/AdamAtomic/flixel) written by [Adam “Atomic” Saltsman](http://www.adamatomic.com/) and [Richard Davey's](http://www.photonstorm.com/flixel-power-tools) [Power Tools](https://github.com/photonstorm/Flixel-Power-Tools)
 
-Special thanks go to the community contributors [Werdn](https://github.com/werdn), [crazysam](https://github.com/crazysam), [impaler](https://github.com/impaler), [ProG4mr](https://github.com/ProG4mr), [Gama11](https://github.com/Gama11), [sergey-miryanov](https://github.com/sergey-miryanov) and more.
+Special thanks go to the community contributors [Werdn](https://github.com/werdn), [gamedevsam](https://github.com/gamedevsam), [impaler](https://github.com/impaler), [ProG4mr](https://github.com/ProG4mr), [Gama11](https://github.com/Gama11), [sergey-miryanov](https://github.com/sergey-miryanov) and more.
 
 HaxeFlixel presents substantial enhancements from the original Flixel AS3 code:
 
-- Use of a robust and powerful, opensource language
+- Use of a robust and powerful, open source language
 - Flexible Asset Management System
 - Cross-platform development for Linux, Mac and Windows
 - Texture Atlas and Layer enhancement for cpp targets
 - Integrated and robust Tween System
 - Access to OpenFL native extensions
 - Compile to Mobile and Desktop targets with native code through OpenFL
-- Impressive Native Performance using GPU accelerated drawTiles implimentation in cpp targets
+- Impressive Native Performance using GPU accelerated drawTiles implementation on cpp targets
 - A powerful debugger with a console as well as an advanced logging system
 - A vibrant community that keeps updating the engine and adding new features to it
 
+##For Developers
 
-###Runtime Targets
+If you are wanting to contribute code, please review the following documentation:
+
+- [Install development flixel](http://haxeflixel.com/documentation/install-development-flixel/)
+- [Code Contributions](http://haxeflixel.com/documentation/code-contributions)
+- [Code Style](http://haxeflixel.com/documentation/code-style)
+
+If you have a question or have not contributed on GitHub before, there are friendly people in the community that help out in the [forums](http://haxeflixel.com/documentation/community/).
+
+For using git with GitHub we recommended using a GUI application to manage your changes, for example [SourceTree](http://www.sourcetreeapp.com/).
+
+##Runtime Targets
 The current possible targets are:
 
 <table>
@@ -81,9 +92,7 @@ The current possible targets are:
 
 There's also experimental support for HTML5.
 
-______________________________________________________
-
-###Basic Features
+##Basic Features
 
 - Display thousands of moving objects
 - Basic collisions between objects

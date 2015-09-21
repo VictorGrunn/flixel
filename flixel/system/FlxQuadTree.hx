@@ -2,8 +2,9 @@ package flixel.system;
 
 import flixel.FlxBasic;
 import flixel.FlxObject;
-import flixel.group.FlxTypedGroup;
-import flixel.util.FlxRect;
+import flixel.group.FlxGroup.FlxTypedGroup;
+import flixel.math.FlxRect;
+import flixel.util.FlxDestroyUtil;
 
 /**
  * A fairly generic quad tree structure for rapid overlap checks.
@@ -17,15 +18,15 @@ class FlxQuadTree extends FlxRect
 	/**
 	 * Flag for specifying that you want to add an object to the A list.
 	 */
-	static public inline var A_LIST:Int = 0;
+	public static inline var A_LIST:Int = 0;
 	/**
 	 * Flag for specifying that you want to add an object to the B list.
 	 */
-	static public inline var B_LIST:Int = 1;
+	public static inline var B_LIST:Int = 1;
 	/**
 	 * Controls the granularity of the quad tree.  Default is 6 (decent performance on large and small worlds).
 	 */
-	static public var divisions:Int;
+	public static var divisions:Int;
 	
 	public var exists:Bool;
 	
@@ -38,27 +39,27 @@ class FlxQuadTree extends FlxRect
 	 * Refers to the internal A and B linked lists,
 	 * which are used to store objects in the leaves.
 	 */
-	private var _headA:FlxList;
+	private var _headA:FlxLinkedList;
 	/**
 	 * Refers to the internal A and B linked lists,
 	 * which are used to store objects in the leaves.
 	 */
-	private var _tailA:FlxList;
+	private var _tailA:FlxLinkedList;
 	/**
 	 * Refers to the internal A and B linked lists,
 	 * which are used to store objects in the leaves.
 	 */
-	private var _headB:FlxList;
+	private var _headB:FlxLinkedList;
 	/**
 	 * Refers to the internal A and B linked lists,
 	 * which are used to store objects in the leaves.
 	 */
-	private var _tailB:FlxList;
+	private var _tailB:FlxLinkedList;
 
 	/**
 	 * Internal, governs and assists with the formation of the tree.
 	 */
-	static private var _min:Int;
+	private static var _min:Int;
 	/**
 	 * Internal, governs and assists with the formation of the tree.
 	 */
@@ -111,92 +112,93 @@ class FlxQuadTree extends FlxRect
 	/**
 	 * Internal, used to reduce recursive method parameters during object placement and tree formation.
 	 */
-	static private var _object:FlxObject;
+	private static var _object:FlxObject;
 	/**
 	 * Internal, used to reduce recursive method parameters during object placement and tree formation.
 	 */
-	static private var _objectLeftEdge:Float;
+	private static var _objectLeftEdge:Float;
 	/**
 	 * Internal, used to reduce recursive method parameters during object placement and tree formation.
 	 */
-	static private var _objectTopEdge:Float;
+	private static var _objectTopEdge:Float;
 	/**
 	 * Internal, used to reduce recursive method parameters during object placement and tree formation.
 	 */
-	static private var _objectRightEdge:Float;
+	private static var _objectRightEdge:Float;
 	/**
 	 * Internal, used to reduce recursive method parameters during object placement and tree formation.
 	 */
-	static private var _objectBottomEdge:Float;
+	private static var _objectBottomEdge:Float;
 	
 	/**
 	 * Internal, used during tree processing and overlap checks.
 	 */
-	static private var _list:Int;
+	private static var _list:Int;
 	/**
 	 * Internal, used during tree processing and overlap checks.
 	 */
-	static private var _useBothLists:Bool;
+	private static var _useBothLists:Bool;
 	/**
 	 * Internal, used during tree processing and overlap checks.
 	 */
-	static private var _processingCallback:FlxObject->FlxObject->Bool;
+	private static var _processingCallback:FlxObject->FlxObject->Bool;
 	/**
 	 * Internal, used during tree processing and overlap checks.
 	 */
-	static private var _notifyCallback:FlxObject->FlxObject->Void;
+	private static var _notifyCallback:FlxObject->FlxObject->Void;
 	/**
 	 * Internal, used during tree processing and overlap checks.
 	 */
-	static private var _iterator:FlxList;
+	private static var _iterator:FlxLinkedList;
 	
 	/**
-	 * Internal, helpers for comparing actual object-to-object overlap - see <code>overlapNode()</code>.
+	 * Internal, helpers for comparing actual object-to-object overlap - see overlapNode().
 	 */
-	static private var _objectHullX:Float;
+	private static var _objectHullX:Float;
 	/**
-	 * Internal, helpers for comparing actual object-to-object overlap - see <code>overlapNode()</code>.
+	 * Internal, helpers for comparing actual object-to-object overlap - see overlapNode().
 	 */
-	static private var _objectHullY:Float;
+	private static var _objectHullY:Float;
 	/**
-	 * Internal, helpers for comparing actual object-to-object overlap - see <code>overlapNode()</code>.
+	 * Internal, helpers for comparing actual object-to-object overlap - see overlapNode().
 	 */
-	static private var _objectHullWidth:Float;
+	private static var _objectHullWidth:Float;
 	/**
-	 * Internal, helpers for comparing actual object-to-object overlap - see <code>overlapNode()</code>.
+	 * Internal, helpers for comparing actual object-to-object overlap - see overlapNode().
 	 */
-	static private var _objectHullHeight:Float;
+	private static var _objectHullHeight:Float;
 	
 	/**
-	 * Internal, helpers for comparing actual object-to-object overlap - see <code>overlapNode()</code>.
+	 * Internal, helpers for comparing actual object-to-object overlap - see overlapNode().
 	 */
-	static private var _checkObjectHullX:Float;
+	private static var _checkObjectHullX:Float;
 	/**
-	 * Internal, helpers for comparing actual object-to-object overlap - see <code>overlapNode()</code>.
+	 * Internal, helpers for comparing actual object-to-object overlap - see overlapNode().
 	 */
-	static private var _checkObjectHullY:Float;
+	private static var _checkObjectHullY:Float;
 	/**
-	 * Internal, helpers for comparing actual object-to-object overlap - see <code>overlapNode()</code>.
+	 * Internal, helpers for comparing actual object-to-object overlap - see overlapNode().
 	 */
-	static private var _checkObjectHullWidth:Float;
+	private static var _checkObjectHullWidth:Float;
 	/**
-	 * Internal, helpers for comparing actual object-to-object overlap - see <code>overlapNode()</code>.
+	 * Internal, helpers for comparing actual object-to-object overlap - see overlapNode().
 	 */
-	static private var _checkObjectHullHeight:Float;
+	private static var _checkObjectHullHeight:Float;
 	
 	/**
 	 * Pooling mechanism, turn FlxQuadTree into a linked list, when FlxQuadTrees are destroyed, they get added to the list, and when they get recycled they get removed.
 	 */
-	static public  var _NUM_CACHED_QUAD_TREES:Int = 0;
-	static private var _cachedTreesHead:FlxQuadTree;
-	private 	   var next:FlxQuadTree;
+	public static  var _NUM_CACHED_QUAD_TREES:Int = 0;
+	private static var _cachedTreesHead:FlxQuadTree;
+	private var next:FlxQuadTree;
 	
 	/**
 	 * Private, use recycle instead.
 	 */
-	private function new(X:Float, Y:Float, Width:Float, Height:Float, Parent:FlxQuadTree = null)
+	private function new(X:Float, Y:Float, Width:Float, Height:Float, ?Parent:FlxQuadTree)
 	{
-		super(X, Y, Width, Height);
+		super();
+		set(X, Y, Width, Height);
 		reset(X, Y, Width, Height, Parent);
 	}
 	
@@ -208,7 +210,7 @@ class FlxQuadTree extends FlxRect
 	 * @param	Height		Desired height of this node.
 	 * @param	Parent		The parent branch or node.  Pass null to create a root.
 	 */
-	public static function recycle(X:Float, Y:Float, Width:Float, Height:Float, Parent:FlxQuadTree = null):FlxQuadTree
+	public static function recycle(X:Float, Y:Float, Width:Float, Height:Float, ?Parent:FlxQuadTree):FlxQuadTree
 	{
 		if (_cachedTreesHead != null)
 		{
@@ -243,38 +245,38 @@ class FlxQuadTree extends FlxRect
 		
 		set(X, Y, Width, Height);
 		
-		_headA = _tailA = FlxList.recycle();
-		_headB = _tailB = FlxList.recycle();
+		_headA = _tailA = FlxLinkedList.recycle();
+		_headB = _tailB = FlxLinkedList.recycle();
 		
 		//Copy the parent's children (if there are any)
-		if(Parent != null)
+		if (Parent != null)
 		{
-			var iterator:FlxList;
-			var ot:FlxList;
-			if(Parent._headA.object != null)
+			var iterator:FlxLinkedList;
+			var ot:FlxLinkedList;
+			if (Parent._headA.object != null)
 			{
 				iterator = Parent._headA;
-				while(iterator != null)
+				while (iterator != null)
 				{
-					if(_tailA.object != null)
+					if (_tailA.object != null)
 					{
 						ot = _tailA;
-						_tailA = FlxList.recycle();
+						_tailA = FlxLinkedList.recycle();
 						ot.next = _tailA;
 					}
 					_tailA.object = iterator.object;
 					iterator = iterator.next;
 				}
 			}
-			if(Parent._headB.object != null)
+			if (Parent._headB.object != null)
 			{
 				iterator = Parent._headB;
-				while(iterator != null)
+				while (iterator != null)
 				{
-					if(_tailB.object != null)
+					if (_tailB.object != null)
 					{
 						ot = _tailB;
-						_tailB = FlxList.recycle();
+						_tailB = FlxLinkedList.recycle();
 						ot.next = _tailB;
 					}
 					_tailB.object = iterator.object;
@@ -306,49 +308,19 @@ class FlxQuadTree extends FlxRect
 	/**
 	 * Clean up memory.
 	 */
-	public function destroy():Void
+	override public function destroy():Void
 	{
-		if (_headA != null)
-		{
-			_headA.destroy();
-		}
-		_headA = null;
-		if (_tailA != null)
-		{
-			_tailA.destroy();
-		}
-		_tailA = null;
-		if (_headB != null)
-		{
-			_headB.destroy();
-		}
-		_headB = null;
-		if (_tailB != null)
-		{
-			_tailB.destroy();
-		}
-		_tailB = null;
+		_headA = FlxDestroyUtil.destroy(_headA);
+		_headB = FlxDestroyUtil.destroy(_headB);
 
-		if (_northWestTree != null)
-		{
-			_northWestTree.destroy();
-		}
-		_northWestTree = null;
-		if (_northEastTree != null)
-		{
-			_northEastTree.destroy();
-		}
-		_northEastTree = null;
-		if (_southEastTree != null)
-		{
-			_southEastTree.destroy();
-		}
-		_southEastTree = null;
-		if (_southWestTree != null)
-		{
-			_southWestTree.destroy();
-		}
-		_southWestTree = null;
+		_tailA = FlxDestroyUtil.destroy(_tailA);
+		_tailB = FlxDestroyUtil.destroy(_tailB);
+
+		_northWestTree = FlxDestroyUtil.destroy(_northWestTree);
+		_northEastTree = FlxDestroyUtil.destroy(_northEastTree);
+		
+		_southWestTree = FlxDestroyUtil.destroy(_southWestTree);
+		_southEastTree = FlxDestroyUtil.destroy(_southEastTree);
 
 		_object = null;
 		_processingCallback = null;
@@ -360,19 +332,21 @@ class FlxQuadTree extends FlxRect
 		next = _cachedTreesHead;
 		_cachedTreesHead = this;
 		_NUM_CACHED_QUAD_TREES++;
+
+		super.destroy();
 	}
 
 	/**
 	 * Load objects and/or groups into the quad tree, and register notify and processing callbacks.
 	 * @param ObjectOrGroup1	Any object that is or extends FlxObject or FlxGroup.
 	 * @param ObjectOrGroup2	Any object that is or extends FlxObject or FlxGroup.  If null, the first parameter will be checked against itself.
-	 * @param NotifyCallback	A function with the form <code>myFunction(Object1:FlxObject,Object2:FlxObject):void</code> that is called whenever two objects are found to overlap in world space, and either no ProcessCallback is specified, or the ProcessCallback returns true. 
-	 * @param ProcessCallback	A function with the form <code>myFunction(Object1:FlxObject,Object2:FlxObject):Boolean</code> that is called whenever two objects are found to overlap in world space.  The NotifyCallback is only called if this function returns true.  See FlxObject.separate(). 
+	 * @param NotifyCallback	A function with the form myFunction(Object1:FlxObject,Object2:FlxObject):void that is called whenever two objects are found to overlap in world space, and either no ProcessCallback is specified, or the ProcessCallback returns true. 
+	 * @param ProcessCallback	A function with the form myFunction(Object1:FlxObject,Object2:FlxObject):Boolean that is called whenever two objects are found to overlap in world space.  The NotifyCallback is only called if this function returns true.  See FlxObject.separate(). 
 	 */
 	public function load(ObjectOrGroup1:FlxBasic, ObjectOrGroup2:FlxBasic = null, NotifyCallback:FlxObject->FlxObject->Void = null, ProcessCallback:FlxObject->FlxObject->Bool = null):Void
 	{
 		add(ObjectOrGroup1, A_LIST);
-		if(ObjectOrGroup2 != null)
+		if (ObjectOrGroup2 != null)
 		{
 			add(ObjectOrGroup2, B_LIST);
 			_useBothLists = true;
@@ -390,31 +364,33 @@ class FlxQuadTree extends FlxRect
 	 * This function will recursively add all group members, but
 	 * not the groups themselves.
 	 * @param	ObjectOrGroup	FlxObjects are just added, FlxGroups are recursed and their applicable members added accordingly.
-	 * @param	List			A <code>int</code> flag indicating the list to which you want to add the objects.  Options are <code>A_LIST</code> and <code>B_LIST</code>.
+	 * @param	List			A int flag indicating the list to which you want to add the objects.  Options are A_LIST and B_LIST.
 	 */
 	public function add(ObjectOrGroup:FlxBasic, list:Int):Void
 	{
 		_list = list;
-		if(Std.is(ObjectOrGroup, FlxTypedGroup))
+		
+		var group = FlxTypedGroup.resolveGroup(ObjectOrGroup);
+		if (group != null)
 		{
 			var i:Int = 0;
 			var basic:FlxBasic;
-			var group:FlxTypedGroup<FlxBasic> = cast ObjectOrGroup;
 			var members:Array<FlxBasic> = group.members;
 			var l:Int = group.length;
-			while(i < l)
+			while (i < l)
 			{
 				basic = members[i++];
-				if((basic != null) && basic.exists)
+				if (basic != null && basic.exists)
 				{
-					if (Std.is(basic, FlxTypedGroup))
+					group = FlxTypedGroup.resolveGroup(basic);
+					if (group != null)
 					{
-						add(basic, list);
+						add(group, list);
 					}
-					else if(Std.is(basic, FlxObject))
+					else
 					{
-						_object = cast(basic, FlxObject);
-						if(_object.exists && _object.allowCollisions != FlxObject.NONE)
+						_object = cast basic;
+						if (_object.exists && _object.allowCollisions != FlxObject.NONE)
 						{
 							_objectLeftEdge = _object.x;
 							_objectTopEdge = _object.y;
@@ -428,8 +404,8 @@ class FlxQuadTree extends FlxRect
 		}
 		else
 		{
-			_object = cast(ObjectOrGroup, FlxObject);
-			if(_object.exists && _object.allowCollisions != FlxObject.NONE)
+			_object = cast ObjectOrGroup;
+			if (_object.exists && _object.allowCollisions != FlxObject.NONE)
 			{
 				_objectLeftEdge = _object.x;
 				_objectTopEdge = _object.y;
@@ -447,25 +423,25 @@ class FlxQuadTree extends FlxRect
 	private function addObject():Void
 	{
 		//If this quad (not its children) lies entirely inside this object, add it here
-		if(!_canSubdivide || ((_leftEdge >= _objectLeftEdge) && (_rightEdge <= _objectRightEdge) && (_topEdge >= _objectTopEdge) && (_bottomEdge <= _objectBottomEdge)))
+		if (!_canSubdivide || (_leftEdge >= _objectLeftEdge && _rightEdge <= _objectRightEdge && _topEdge >= _objectTopEdge && _bottomEdge <= _objectBottomEdge))
 		{
 			addToList();
 			return;
 		}
 		
 		//See if the selected object fits completely inside any of the quadrants
-		if((_objectLeftEdge > _leftEdge) && (_objectRightEdge < _midpointX))
+		if ((_objectLeftEdge > _leftEdge) && (_objectRightEdge < _midpointX))
 		{
-			if((_objectTopEdge > _topEdge) && (_objectBottomEdge < _midpointY))
+			if ((_objectTopEdge > _topEdge) && (_objectBottomEdge < _midpointY))
 			{
-				if(_northWestTree == null)
+				if (_northWestTree == null)
 				{
 					_northWestTree = FlxQuadTree.recycle(_leftEdge, _topEdge, _halfWidth, _halfHeight, this);
 				}
 				_northWestTree.addObject();
 				return;
 			}
-			if((_objectTopEdge > _midpointY) && (_objectBottomEdge < _bottomEdge))
+			if ((_objectTopEdge > _midpointY) && (_objectBottomEdge < _bottomEdge))
 			{
 				if (_southWestTree == null)
 				{
@@ -475,9 +451,9 @@ class FlxQuadTree extends FlxRect
 				return;
 			}
 		}
-		if((_objectLeftEdge > _midpointX) && (_objectRightEdge < _rightEdge))
+		if ((_objectLeftEdge > _midpointX) && (_objectRightEdge < _rightEdge))
 		{
-			if((_objectTopEdge > _topEdge) && (_objectBottomEdge < _midpointY))
+			if ((_objectTopEdge > _topEdge) && (_objectBottomEdge < _midpointY))
 			{
 				if (_northEastTree == null)
 				{
@@ -486,7 +462,7 @@ class FlxQuadTree extends FlxRect
 				_northEastTree.addObject();
 				return;
 			}
-			if((_objectTopEdge > _midpointY) && (_objectBottomEdge < _bottomEdge))
+			if ((_objectTopEdge > _midpointY) && (_objectBottomEdge < _bottomEdge))
 			{
 				if (_southEastTree == null)
 				{
@@ -498,7 +474,7 @@ class FlxQuadTree extends FlxRect
 		}
 		
 		//If it wasn't completely contained we have to check out the partial overlaps
-		if((_objectRightEdge > _leftEdge) && (_objectLeftEdge < _midpointX) && (_objectBottomEdge > _topEdge) && (_objectTopEdge < _midpointY))
+		if ((_objectRightEdge > _leftEdge) && (_objectLeftEdge < _midpointX) && (_objectBottomEdge > _topEdge) && (_objectTopEdge < _midpointY))
 		{
 			if (_northWestTree == null)
 			{
@@ -506,7 +482,7 @@ class FlxQuadTree extends FlxRect
 			}
 			_northWestTree.addObject();
 		}
-		if((_objectRightEdge > _midpointX) && (_objectLeftEdge < _rightEdge) && (_objectBottomEdge > _topEdge) && (_objectTopEdge < _midpointY))
+		if ((_objectRightEdge > _midpointX) && (_objectLeftEdge < _rightEdge) && (_objectBottomEdge > _topEdge) && (_objectTopEdge < _midpointY))
 		{
 			if (_northEastTree == null)
 			{
@@ -514,7 +490,7 @@ class FlxQuadTree extends FlxRect
 			}
 			_northEastTree.addObject();
 		}
-		if((_objectRightEdge > _midpointX) && (_objectLeftEdge < _rightEdge) && (_objectBottomEdge > _midpointY) && (_objectTopEdge < _bottomEdge))
+		if ((_objectRightEdge > _midpointX) && (_objectLeftEdge < _rightEdge) && (_objectBottomEdge > _midpointY) && (_objectTopEdge < _bottomEdge))
 		{
 			if (_southEastTree == null)
 			{
@@ -522,7 +498,7 @@ class FlxQuadTree extends FlxRect
 			}
 			_southEastTree.addObject();
 		}
-		if((_objectRightEdge > _leftEdge) && (_objectLeftEdge < _midpointX) && (_objectBottomEdge > _midpointY) && (_objectTopEdge < _bottomEdge))
+		if ((_objectRightEdge > _leftEdge) && (_objectLeftEdge < _midpointX) && (_objectBottomEdge > _midpointY) && (_objectTopEdge < _bottomEdge))
 		{
 			if (_southWestTree == null)
 			{
@@ -537,23 +513,23 @@ class FlxQuadTree extends FlxRect
 	 */
 	private function addToList():Void
 	{
-		var ot:FlxList;
-		if(_list == A_LIST)
+		var ot:FlxLinkedList;
+		if (_list == A_LIST)
 		{
-			if(_tailA.object != null)
+			if (_tailA.object != null)
 			{
 				ot = _tailA;
-				_tailA = FlxList.recycle();
+				_tailA = FlxLinkedList.recycle();
 				ot.next = _tailA;
 			}
 			_tailA.object = _object;
 		}
 		else
 		{
-			if(_tailB.object != null)
+			if (_tailB.object != null)
 			{
 				ot = _tailB;
-				_tailB = FlxList.recycle();
+				_tailB = FlxLinkedList.recycle();
 				ot.next = _tailB;
 			}
 			_tailB.object = _object;
@@ -581,19 +557,19 @@ class FlxQuadTree extends FlxRect
 	}
 	
 	/**
-	 * <code>FlxQuadTree</code>'s other main function.  Call this after adding objects
-	 * using <code>FlxQuadTree.load()</code> to compare the objects that you loaded.
+	 * FlxQuadTree's other main function.  Call this after adding objects
+	 * using FlxQuadTree.load() to compare the objects that you loaded.
 	 * @return	Whether or not any overlaps were found.
 	 */
 	public function execute():Bool
 	{
 		var overlapProcessed:Bool = false;
-		var iterator:FlxList;
+		var iterator:FlxLinkedList;
 		
-		if(_headA.object != null)
+		if (_headA.object != null)
 		{
 			iterator = _headA;
-			while(iterator != null)
+			while (iterator != null)
 			{
 				_object = iterator.object;
 				if (_useBothLists)
@@ -604,9 +580,8 @@ class FlxQuadTree extends FlxRect
 				{
 					_iterator = iterator.next;
 				}
-				if (_object.exists && (_object.allowCollisions > 0) &&
-					(_iterator != null) && (_iterator.object != null) &&
-					_iterator.object.exists && overlapNode())
+				if (_object != null && _object.exists && _object.allowCollisions > 0 && 
+					_iterator != null && _iterator.object != null && overlapNode())
 				{
 					overlapProcessed = true;
 				}
@@ -641,47 +616,43 @@ class FlxQuadTree extends FlxRect
 	 */
 	private function overlapNode():Bool
 	{
+		//Calculate bulk hull for _object
+		_objectHullX = (_object.x < _object.last.x) ? _object.x : _object.last.x;
+		_objectHullY = (_object.y < _object.last.y) ? _object.y : _object.last.y;
+		_objectHullWidth = _object.x - _object.last.x;
+		_objectHullWidth = _object.width + ((_objectHullWidth > 0) ? _objectHullWidth : -_objectHullWidth);
+		_objectHullHeight = _object.y - _object.last.y;
+		_objectHullHeight = _object.height + ((_objectHullHeight > 0) ? _objectHullHeight : -_objectHullHeight);
+		
 		//Walk the list and check for overlaps
 		var overlapProcessed:Bool = false;
 		var checkObject:FlxObject;
+		
 		while (_iterator != null)
 		{
-			if (_object == null || (!_object.exists || (_object.allowCollisions <= 0)))
-			{
-				break;
-			}
-			
 			checkObject = _iterator.object;
-			if((_object == checkObject) || !checkObject.exists || (checkObject.allowCollisions <= 0))
+			if (_object == checkObject || !checkObject.exists || checkObject.allowCollisions <= 0)
 			{
 				_iterator = _iterator.next;
 				continue;
 			}
 			
-			//calculate bulk hull for _object
-			_objectHullX = (_object.x < _object.last.x)?_object.x:_object.last.x;
-			_objectHullY = (_object.y < _object.last.y)?_object.y:_object.last.y;
-			_objectHullWidth = _object.x - _object.last.x;
-			_objectHullWidth = _object.width + ((_objectHullWidth>0)?_objectHullWidth:-_objectHullWidth);
-			_objectHullHeight = _object.y - _object.last.y;
-			_objectHullHeight = _object.height + ((_objectHullHeight>0)?_objectHullHeight:-_objectHullHeight);
-			
-			//calculate bulk hull for checkObject
-			_checkObjectHullX = (checkObject.x < checkObject.last.x)?checkObject.x:checkObject.last.x;
-			_checkObjectHullY = (checkObject.y < checkObject.last.y)?checkObject.y:checkObject.last.y;
+			//Calculate bulk hull for checkObject
+			_checkObjectHullX = (checkObject.x < checkObject.last.x) ? checkObject.x : checkObject.last.x;
+			_checkObjectHullY = (checkObject.y < checkObject.last.y) ? checkObject.y : checkObject.last.y;
 			_checkObjectHullWidth = checkObject.x - checkObject.last.x;
-			_checkObjectHullWidth = checkObject.width + ((_checkObjectHullWidth>0)?_checkObjectHullWidth:-_checkObjectHullWidth);
+			_checkObjectHullWidth = checkObject.width + ((_checkObjectHullWidth > 0) ? _checkObjectHullWidth : -_checkObjectHullWidth);
 			_checkObjectHullHeight = checkObject.y - checkObject.last.y;
-			_checkObjectHullHeight = checkObject.height + ((_checkObjectHullHeight>0)?_checkObjectHullHeight:-_checkObjectHullHeight);
+			_checkObjectHullHeight = checkObject.height + ((_checkObjectHullHeight > 0) ? _checkObjectHullHeight : -_checkObjectHullHeight);
 			
-			//check for intersection of the two hulls
+			//Check for intersection of the two hulls
 			if ((_objectHullX + _objectHullWidth > _checkObjectHullX) &&
 				(_objectHullX < _checkObjectHullX + _checkObjectHullWidth) &&
 				(_objectHullY + _objectHullHeight > _checkObjectHullY) &&
 				(_objectHullY < _checkObjectHullY + _checkObjectHullHeight))
 			{
-				// Execute callback functions if they exist
-				if ((_processingCallback == null) || _processingCallback(_object, checkObject))
+				//Execute callback functions if they exist
+				if (_processingCallback == null || _processingCallback(_object, checkObject))
 				{
 					overlapProcessed = true;
 					if (_notifyCallback != null)

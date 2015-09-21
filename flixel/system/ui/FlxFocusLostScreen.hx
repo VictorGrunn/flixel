@@ -2,27 +2,42 @@ package flixel.system.ui;
 
 import flash.display.Graphics;
 import flash.display.Sprite;
-import flixel.FlxCamera;
 import flixel.FlxG;
 import flixel.system.FlxAssets;
 
 class FlxFocusLostScreen extends Sprite
 {
+	@:keep
 	public function new()
 	{
-		super();
+		super();	
+		draw();
 		
+		var logo:Sprite = new Sprite();
+		FlxAssets.drawLogo(logo.graphics);
+		logo.scaleX = logo.scaleY = 0.2;
+		logo.x = logo.y = 5;
+		logo.alpha = 0.35;
+		addChild(logo);
+		
+		visible = false;
+	}
+	
+	/**
+	 * Redraws the big arrow on the focus lost screen.
+	 */
+	public function draw():Void
+	{
 		var gfx:Graphics = graphics;
-		var screenWidth:Int = Std.int(FlxG.width * FlxCamera.defaultZoom);
-		var screenHeight:Int = Std.int(FlxG.height * FlxCamera.defaultZoom);
+		
+		var screenWidth:Int = Std.int(FlxG.stage.stageWidth);
+		var screenHeight:Int = Std.int(FlxG.stage.stageHeight);
 		
 		// Draw transparent black backdrop
+		gfx.clear();
 		gfx.moveTo(0, 0);
 		gfx.beginFill(0, 0.5);
-		gfx.lineTo(screenWidth, 0);
-		gfx.lineTo(screenWidth, screenHeight);
-		gfx.lineTo(0, screenHeight);
-		gfx.lineTo(0, 0);
+		gfx.drawRect(0, 0, screenWidth, screenHeight);
 		gfx.endFill();
 		
 		// Draw white arrow
@@ -36,20 +51,7 @@ class FlxFocusLostScreen extends Sprite
 		gfx.lineTo(halfWidth - helper, halfHeight - helper);
 		gfx.endFill();
 		
-		var logo:Sprite = new Sprite();
-		FlxAssets.drawLogo(logo.graphics);
-		logo.scaleX = helper / 1000;
-		
-		if (logo.scaleX < 0.2)
-		{
-			logo.scaleX = 0.2;
-		}
-		
-		logo.scaleY = logo.scaleX;
-		logo.x = logo.y = 5;
-		logo.alpha = 0.35;
-		addChild(logo);
-		
-		visible = false;
+		this.x = -FlxG.scaleMode.offset.x;
+		this.y = -FlxG.scaleMode.offset.y;
 	}
 }

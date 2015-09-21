@@ -1,9 +1,8 @@
 ﻿package flixel.tweens.motion;
 
-import flixel.tweens.FlxTween;
-import flixel.tweens.FlxTween.CompleteCallback;
-import flixel.tweens.FlxEase.EaseFunction;
-import flixel.util.FlxPoint;
+import flixel.math.FlxPoint;
+import flixel.tweens.FlxTween.TweenOptions;
+import flixel.util.FlxDestroyUtil;
 
 /**
  * A series of points which will determine a path from the
@@ -11,79 +10,82 @@ import flixel.util.FlxPoint;
  */
 class QuadPath extends Motion
 {
-	/**
-	 * Constructor.
-	 * @param	complete	Optional completion callback.
-	 * @param	type		Tween type.
-	 */
-	public function new(?complete:CompleteCallback, type:Int = 0) 
+	// Path information.
+	private var _points:Array<FlxPoint>;
+	private var _distance:Float = 0;
+	private var _speed:Float = 0;
+	private var _index:Int = 0;
+	private var _numSegs:Int = 0;
+	
+	// Curve information.
+	private var _updateCurve:Bool = true;
+	private var _curveT:Array<Float>;
+	private var _curveD:Array<Float>;
+	
+	// Curve points.
+	private var _a:FlxPoint;
+	private var _b:FlxPoint;
+	private var _c:FlxPoint;
+	
+	private function new(Options:TweenOptions)
 	{
-		super(0, complete, type, null);
-		_points = new Array<FlxPoint>();
-		_curve = new Array<FlxPoint>();
-		_curveD = new Array<Float>();
-		_curveT = new Array<Float>();
-		_distance = _speed = _index = 0;
-		_updateCurve = true;
+		super(Options);
 		
-		_curveT[0] = 0;
+		_points = [];
+		_curveT = [];
+		_curveD = [];
 	}
 	
 	override public function destroy():Void 
 	{
 		super.destroy();
-		_points = null;
-		_curve = null;
-		_curveD = null;
-		_curveT = null;
-		_a = null;
-		_b = null;
-		_c = null;
+		// recycle FlxPoints
+		for (point in _points)
+		{
+			point = FlxDestroyUtil.put(point);
+		}
+		_a = FlxDestroyUtil.put(_a);
+		_b = FlxDestroyUtil.put(_b);
+		_c = FlxDestroyUtil.put(_c);
 	}
 	
 	/**
 	 * Starts moving along the path.
+	 * 
 	 * @param	DurationOrSpeed		Duration or speed of the movement.
 	 * @param	UseDuration			Whether to use the previous param as duration or speed.
-	 * @param	Ease				Optional easer function.
 	 */
-	public function setMotion(DurationOrSpeed:Float, UseDuration:Bool = true, ?Ease:EaseFunction):QuadPath
+	public function setMotion(DurationOrSpeed:Float, UseDuration:Bool = true):QuadPath
 	{
 		updatePath();
 		
 		if (UseDuration)
 		{
-			_target = DurationOrSpeed;
+			duration = DurationOrSpeed;
 			_speed = _distance / DurationOrSpeed;
 		}
 		else
 		{
-			_target = _distance / DurationOrSpeed;
+			duration = _distance / DurationOrSpeed;
 			_speed = DurationOrSpeed;
 		}
 		
-		_ease = Ease;
 		start();
 		return this;
 	}
 	
 	/**
 	 * Adds the point to the path.
-	 * @param	x		X position.
-	 * @param	y		Y position.
 	 */
 	public function addPoint(x:Float = 0, y:Float = 0):QuadPath
 	{
 		_updateCurve = true;
-		if (_points.length == 0) _curve[0] = new FlxPoint(x, y);
-		_points[_points.length] = new FlxPoint(x, y);
+		_points.push(FlxPoint.get(x, y));
 		return this;
 	}
 	
 	/**
 	 * Gets the point on the path.
-	 * @param	index		Index of the point.
-	 * @return	The Point object.
 	 */
 	public function getPoint(index:Int = 0):FlxPoint
 	{
@@ -94,49 +96,39 @@ class QuadPath extends Motion
 		return _points[index % _points.length];
 	}
 	
-	/** @private Starts the Tween. */
-	override public function start():Dynamic
+	override private function start():QuadPath
 	{
-		if (!_backward)
-		{
-			_index = 0;
-		}
-		else
-		{
-			_index = _curve.length - 1;
-		}
-		
+		_index = (backward) ? (_numSegs - 1) : 0; 
 		super.start();
 		return this;
 	}
 	
-	/** @private Updates the Tween. */
-	override public function update():Void
+	override private function update(elapsed:Float):Void
 	{
-		super.update();
+		super.update(elapsed);
 		var td:Float;
 		var tt:Float;
 		
-		if (!_backward && _points != null)
+		if (!backward && (_points != null))
 		{
-			if (_index < _curve.length - 1)
+			if (_index < _numSegs - 1)
 			{
-				while (_t > _curveT[_index + 1]) 
+				while (scale > _curveT[_index + 1]) 
 				{
 					_index++;
-					if (_index == _curve.length - 1)
+					if (_index == _numSegs - 1)
 					{
-						_index -= 1;
 						break;
 					}
 				}
 			}
 			td = _curveT[_index];
 			tt = _curveT[_index + 1] - td;
-			td = (_t - td) / tt;
-			_a = _curve[_index];
-			_b = _points[_index + 1];
-			_c = _curve[_index + 1];
+			td = (scale - td) / tt;
+			_a = _points[_index * 2];
+			_b = _points[_index * 2 + 1];
+			_c = _points[_index * 2 + 2];
+			
 			x = _a.x * (1 - td) * (1 - td) + _b.x * 2 * (1 - td) * td + _c.x * td * td;
 			y = _a.y * (1 - td) * (1 - td) + _b.y * 2 * (1 - td) * td + _c.y * td * td;
 		}
@@ -144,98 +136,71 @@ class QuadPath extends Motion
 		{
 			if (_index > 0)
 			{
-				while (_t < _curveT[_index - 1])
+				while (scale < _curveT[_index])
 				{
-					_index -= 1;
+					_index--;
 					if (_index == 0)
 					{
-						_index += 1;
 						break;
 					}
 				}
 			}
 			
-			td = _curveT[_index];
-			tt = _curveT[_index - 1] - td;
-			td = (_t - td) / tt;
-			_a = _curve[_index];
-			_b = _points[_index];
-			_c = _curve[_index - 1];
+			td = _curveT[_index+1];
+			tt = _curveT[_index] - td;
+			td = (scale - td) / tt;
+			_a = _points[_index * 2 + 2];
+			_b = _points[_index * 2 + 1];
+			_c = _points[_index * 2];
+			
 			x = _a.x * (1 - td) * (1 - td) + _b.x * 2 * (1 - td) * td + _c.x * td * td;
 			y = _a.y * (1 - td) * (1 - td) + _b.y * 2 * (1 - td) * td + _c.y * td * td;
 		}
-		
 		super.postUpdate();
 	}
 	
-	/** @private Updates the path, preparing the curve. */
+	// [from, control, to, control, to, control, to, control, to ...]
 	private function updatePath():Void
 	{
-		if (_points.length < 3)	
+		if ((_points.length - 1) % 2 != 0 || _points.length < 3)	
 		{
-			throw "A QuadPath must have at least 3 points to operate.";
-		}
+			throw "A QuadPath must have at least 3 points to operate and number of points must be a odd.";
+		} 
 		if (!_updateCurve) 
 		{
 			return;
 		}
 		_updateCurve = false;
 		
-		// produce the curve points
-		var p:FlxPoint,
-			c:FlxPoint,
-			l:FlxPoint = _points[1],
-			i:Int = 2;
-		while (i < _points.length)
-		{
-			p = _points[i];
-			if (_curve.length > i - 1) c = _curve[i - 1];
-			else c = _curve[i - 1] = new FlxPoint();
-			if (i < _points.length - 1)
-			{
-				c.x = l.x + (p.x - l.x) / 2;
-				c.y = l.y + (p.y - l.y) / 2;
-			}
-			else
-			{
-				c.x = p.x;
-				c.y = p.y;
-			}
-			l = p;
-			i ++;
-		}
-		
 		// find the total distance of the path
-		i = 0;
+		var i:Int = 0;
+		var j:Int = 0;
 		_distance = 0;
-		while (i < _curve.length - 1)
+		_numSegs = Std.int((_points.length - 1) / 2);
+		while (i < _numSegs)
 		{
-			_curveD[i] = curveLength(_curve[i], _points[i + 1], _curve[i + 1]);
-			_distance += _curveD[i ++];
+			j = i * 2;
+			_curveD[i] = getCurveLength(_points[j], _points[j + 1], _points[j + 2]);
+			_distance += _curveD[i++];
 		}
 		
 		// find t for each point on the curve
-		i = 1;
+		i = 0;
 		var d:Float = 0;
-		while (i < _curve.length - 1)
+		while (i < _numSegs)
 		{
 			d += _curveD[i];
-			_curveT[i ++] = d / _distance;
+			_curveT[i++] = d / _distance;
 		}
-		_curveT[_curve.length - 1] = 1;
+		_curveT[_numSegs - 1] = 1;
+		_curveT.unshift(0);
 	}
 	
-	/**
-	 * Amount of points on the path.
-	 */
-	public var pointCount(get_pointCount, null):Float;
-	private function get_pointCount():Float { return _points.length; }
-	
-	/** @private Calculates the lenght of the curve. */
-	private function curveLength(start:FlxPoint, control:FlxPoint, finish:FlxPoint):Float
+	private function getCurveLength(start:FlxPoint, control:FlxPoint, finish:FlxPoint):Float
 	{
-		var a:FlxPoint = QuadPath._Point,
-			b:FlxPoint = QuadPath._Point2;
+		var a = FlxPoint.get();
+		var b = FlxPoint.get();
+		
 		a.x = start.x - 2 * control.x + finish.x;
 		a.y = start.y - 2 * control.y + finish.y;
 		b.x = 2 * control.x - 2 * start.x;
@@ -248,26 +213,10 @@ class QuadPath extends Motion
 			A32:Float = 2 * A * A2,
 			C2:Float = 2 * Math.sqrt(C),
 			BA:Float = B / A2;
+			
+		a.put();
+		b.put();
+			
 		return (A32 * ABC + A2 * B * (ABC - C2) + (4 * C * A - B * B) * Math.log((2 * A2 + BA + ABC) / (BA + C2))) / (4 * A32);
 	}
-	
-	// Path information.
-	private var _points:Array<FlxPoint>;
-	private var _distance:Float;
-	private var _speed:Float;
-	private var _index:Int;
-	
-	// Curve information.
-	private var _updateCurve:Bool;
-	private var _curve:Array<FlxPoint>;
-	private var _curveT:Array<Float>;
-	private var _curveD:Array<Float>;
-	
-	// Curve points.
-	private var _a:FlxPoint;
-	private var _b:FlxPoint;
-	private var _c:FlxPoint;
-	
-	private static var _Point:FlxPoint = new FlxPoint();
-	private static var _Point2:FlxPoint = new FlxPoint();
 }

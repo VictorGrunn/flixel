@@ -1,16 +1,14 @@
 package flixel.ui;
 
-import flash.display.BitmapData;
-import flash.geom.Rectangle;
-import flash.ui.Keyboard;
 import flixel.FlxG;
 import flixel.FlxSprite;
 import flixel.group.FlxSpriteGroup;
+import flixel.input.touch.FlxTouch;
+import flixel.math.FlxAngle;
+import flixel.math.FlxPoint;
+import flixel.math.FlxRect;
 import flixel.system.FlxAssets;
-import flixel.system.input.touch.FlxTouch;
-import flixel.util.FlxAngle;
-import flixel.util.FlxPoint;
-import flixel.util.FlxRect;
+import flixel.util.FlxDestroyUtil;
 
 /**
  * A virtual thumbstick - useful for input on mobile devices.
@@ -23,9 +21,6 @@ class FlxAnalog extends FlxSpriteGroup
 	 * Shows the current state of the button.
 	 */ 
 	public var status:Int = NORMAL;
-	/**
-	 * The thumb 
-	 */
 	public var thumb:FlxSprite;
 	/**
 	 * The background of the joystick, also known as the base.
@@ -48,27 +43,22 @@ class FlxAnalog extends FlxSpriteGroup
 	 */ 
 	public var onPressed:Void->Void;
 	/**
-	 * How fast the speed of this object is changing.
+	 * Used with public variable status, means not highlighted or pressed.
 	 */ 
-	public var acceleration:FlxPoint;
-	
+	private static inline var NORMAL:Int = 0;
 	/**
-	 * Used with public variable <code>status</code>, means not highlighted or pressed.
+	 * Used with public variable status, means highlighted (usually from mouse over).
 	 */ 
-	inline static private var NORMAL:Int = 0;
+	private static inline var HIGHLIGHT:Int = 1;
 	/**
-	 * Used with public variable <code>status</code>, means highlighted (usually from mouse over).
+	 * Used with public variable status, means pressed (usually from mouse click).
 	 */ 
-	inline static private var HIGHLIGHT:Int = 1;
-	/**
-	 * Used with public variable <code>status</code>, means pressed (usually from mouse click).
-	 */ 
-	inline static private var PRESSED:Int = 2;	
+	private static inline var PRESSED:Int = 2;
 	
 	/**
 	 * A list of analogs that are currently active.
 	 */ 
-	static private var _analogs:Array<FlxAnalog>;
+	private static var _analogs:Array<FlxAnalog> = [];
 	
 	#if !FLX_NO_TOUCH
 	/**
@@ -78,22 +68,18 @@ class FlxAnalog extends FlxSpriteGroup
 	/**
 	 * Helper array for checking touches
 	 */ 
-	private var _tempTouches:Array<FlxTouch>;
+	private var _tempTouches:Array<FlxTouch> = [];
 	#end
 	
 	/**
-	 * Helper FlxPoint object
-	 */ 
-	private var _point:FlxPoint;
-	/**
 	 * The area which the joystick will react.
 	 */
-	private var _zone:FlxRect;
+	private var _zone:FlxRect = FlxRect.get();
 	
 	/**
 	 * The radius in which the stick can move.
 	 */ 
-	private var _radius:Float;
+	private var _radius:Float = 0;
 	private var _direction:Float = 0;
 	private var _amount:Float = 0;		
 	/**
@@ -106,35 +92,28 @@ class FlxAnalog extends FlxSpriteGroup
 	 *  
 	 * @param	X		The X-coordinate of the point in space.
  	 * @param	Y		The Y-coordinate of the point in space.
- 	 * @param	radius	The radius where the thumb can move. If 0, the background will be use as radius.
+ 	 * @param	radius	The radius where the thumb can move. If 0, half the background's width will be used as radius.
  	 * @param	ease	The duration of the easing. The value must be between 0 and 1.
 	 */
-	public function new(X:Float, Y:Float, Radius:Float = 0, Ease:Float = 0.25)
+	public function new(X:Float = 0, Y:Float = 0, Radius:Float = 0, Ease:Float = 0.25)
 	{
-		_zone = new FlxRect();
-		
 		super();
 		
 		_radius = Radius;
 		_ease = Ease;
 		
-		if (_analogs == null)
-		{
-			_analogs = new Array<FlxAnalog>();
-		}
 		_analogs.push(this);
 		
-		acceleration = new FlxPoint();
-		#if !FLX_NO_TOUCH
-		_tempTouches = [];
-		#end
-		_point = new FlxPoint();
+		_point = FlxPoint.get();
 		
 		createBase();
 		createThumb();
 		
 		x = X;
 		y = Y;
+		
+		scrollFactor.set();
+		moves = false;
 	}
 	
 	/**
@@ -144,7 +123,9 @@ class FlxAnalog extends FlxSpriteGroup
 	private function createBase():Void
 	{
 		base = new FlxSprite(x, y);
-		base.loadGraphic(FlxAssets.IMG_BASE);
+		base.frames = FlxAssets.getVirtualInputFrames();
+		base.animation.frameName = "base";
+		base.resetSizeFromFrame();
 		base.x += -base.width * 0.5;
 		base.y += -base.height * 0.5;
 		base.scrollFactor.set();
@@ -164,7 +145,9 @@ class FlxAnalog extends FlxSpriteGroup
 	private function createThumb():Void 
 	{
 		thumb = new FlxSprite(x, y);
-		thumb.loadGraphic(FlxAssets.IMG_THUMB);
+		thumb.frames = FlxAssets.getVirtualInputFrames();
+		thumb.animation.frameName = "thumb";
+		thumb.resetSizeFromFrame();
 		thumb.scrollFactor.set();
 		thumb.solid = false;
 		
@@ -197,16 +180,15 @@ class FlxAnalog extends FlxSpriteGroup
 	{
 		super.destroy();
 		
-		_analogs = null;
+		_zone = FlxDestroyUtil.put(_zone);
+		
+		_analogs.remove(this);
 		onUp = null;
 		onDown = null;
 		onOver = null;
 		onPressed = null;
-		acceleration = null;
 		thumb = null;
 		base = null;
-		_zone = null;
-		_point = null;
 		
 		#if !FLX_NO_TOUCH
 		_currentTouch = null;
@@ -217,7 +199,7 @@ class FlxAnalog extends FlxSpriteGroup
 	/**
 	 * Update the behavior. 
 	 */
-	override public function update():Void 
+	override public function update(elapsed:Float):Void 
 	{
 		#if !FLX_NO_TOUCH
 		var touch:FlxTouch = null;
@@ -292,7 +274,7 @@ class FlxAnalog extends FlxSpriteGroup
 		_tempTouches.splice(0, _tempTouches.length);
 		#end
 		
-		super.update();
+		super.update(elapsed);
 	}
 	
 	private function updateAnalog(TouchPoint:FlxPoint, Pressed:Bool, JustPressed:Bool, JustReleased:Bool, ?Touch:FlxTouch):Bool
@@ -387,8 +369,6 @@ class FlxAnalog extends FlxSpriteGroup
 	
 	/**
 	 * Returns the angle in degrees.
-	 * 
-	 * @return	The angle.
 	 */
 	public function getAngle():Float
 	{
@@ -400,7 +380,7 @@ class FlxAnalog extends FlxSpriteGroup
 	 */
 	public var pressed(get, never):Bool;
 	
-	inline private function get_pressed():Bool
+	private inline function get_pressed():Bool
 	{
 		return status == PRESSED;
 	}
@@ -447,7 +427,7 @@ class FlxAnalog extends FlxSpriteGroup
 		return false;
 	}
 	
-	override public function set_x(X:Float):Float
+	override private function set_x(X:Float):Float
 	{
 		super.set_x(X);
 		createZone();
@@ -455,7 +435,7 @@ class FlxAnalog extends FlxSpriteGroup
 		return X;
 	}
 	
-	override public function set_y(Y:Float):Float
+	override private function set_y(Y:Float):Float
 	{
 		super.set_y(Y);
 		createZone();

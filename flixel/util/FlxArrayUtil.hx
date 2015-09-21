@@ -4,42 +4,15 @@ package flixel.util;
  * A set of functions for array manipulation.
  */
 class FlxArrayUtil
-{
-	/**
-	 * Function to search for a specified element in an array. This is faster than <code>Lambda.indexOf()</code>
-	 * on the flash target because it uses the the native array <code>indexOf()</code> method.
-	 * 
-	 * @param	array		The array.
-	 * @param	whatToFind	The element you're looking for.
-	 * @param 	fromIndex	The index to start the search from (optional, for optimization).
-	 * @return	The index of the element within the array. -1 if it wasn't found.
-	 */
-	@:generic static public function indexOf<T>(array:Array<T>, whatToFind:T, fromIndex:Int = 0):Int
-	{
-		#if flash
-		return untyped array.indexOf(whatToFind, fromIndex);
-		#else
-		var index:Int = -1;
-		var len:Int = array.length;
-		for (i in fromIndex...len)
-		{
-			if (array[i] == whatToFind)
-			{
-				index = i;
-				break;
-			}
-		}
-		return index;
-		#end
-	}
-	
+{	
 	/**
 	 * Sets the length of an array.
 	 * 
 	 * @param	array		The array.
 	 * @param	newLength	The length you want the array to have.
 	 */
-	@:generic static public function setLength<T>(array:Array<T>, newLength:Int):Void
+	@:generic
+	public static function setLength<T>(array:Array<T>, newLength:Int):Void
 	{
 		if (newLength < 0) return;
 		var oldLength:Int = array.length;
@@ -59,59 +32,134 @@ class FlxArrayUtil
 	}
 	
 	/**
-	 * Shuffles the entries in an array into a new random order.
-	 * Deterministic and safe for use with replays/recordings.
+	 * Safely removes an element from an array by swapping it with the last element and calling pop()
+	 * (won't do anything if the element is not in the array). This is a lot faster than regular splice(), 
+	 * but it can only be used on arrays where order doesn't matter.
 	 * 
-	 * @param	A				A Flash <code>Array</code> object containing...stuff.
-	 * @param	HowManyTimes	How many swaps to perform during the shuffle operation.  Good rule of thumb is 2-4 times as many objects are in the list.
-	 * @return	The same Flash <code>Array</code> object that you passed in in the first place.
+	 * @param	array	The array to remove the element from
+	 * @param 	element	The element to remove from the array
+	 * @return	The array
 	 */
-	@:generic static public function shuffle<T>(Objects:Array<T>, HowManyTimes:Int):Array<T>
+	@:generic
+	public static inline function fastSplice<T>(array:Array<T>, element:T):Array<T>
 	{
-		HowManyTimes = Std.int(Math.max(HowManyTimes, 0));
-		var i:Int = 0;
-		var index1:Int;
-		var index2:Int;
-		var object:Dynamic;
-		while (i < HowManyTimes)
+		var index = array.indexOf(element);
+		if (index != -1)
 		{
-			index1 = Std.int(FlxRandom.float() * Objects.length);
-			index2 = Std.int(FlxRandom.float() * Objects.length);
-			object = Objects[index2];
-			Objects[index2] = Objects[index1];
-			Objects[index1] = object;
-			i++;
+			return swapAndPop(array, index);
 		}
-		return Objects;
+		return array;
 	}
-		
+	
 	/**
-	 * Fetch a random entry from the given array.
-	 * Will return null if random selection is missing, or array has no entries.
-	 * Deterministic and safe for use with replays/recordings.
+	 * Removes an element from an array by swapping it with the last element and calling pop().
+	 * This is a lot faster than regular splice(), but it can only be used on arrays where order doesn't matter.
 	 * 
-	 * @param	Objects		A Flash array of objects.
-	 * @param	StartIndex	Optional offset off the front of the array. Default value is 0, or the beginning of the array.
-	 * @param	Length		Optional restriction on the number of values you want to randomly select from.
-	 * @return	The random object that was selected.
+	 * IMPORTANT: always count down from length to zero if removing elements from whithin a loop
+	 * 
+	 * var i = array.length;
+	 * while (i-- > 0)
+	 * {
+	 *      if (array[i].shouldRemove)
+	 *      {
+	 *           FlxArrayUtil.swapAndPop(array, i);
+	 *      }
+	 * }
+	 * 
+	 * @param	array	The array to remove the element from
+	 * @param 	index	The index of the element to be removed from the array
+	 * @return	The array
 	 */
-	@:generic static public function getRandom<T>(Objects:Array<T>, StartIndex:Int = 0, Length:Int = 0):T
+	@:generic
+	public static inline function swapAndPop<T>(array:Array<T>, index:Int):Array<T>
 	{
-		if (Objects != null)
+		array[index] = array[array.length - 1]; // swap element to remove and last element
+		array.pop();
+		return array;
+	}
+	
+	/**
+	 * Clears an array structure, but leaves the object data untouched
+	 * Useful for cleaning up temporary references to data you want to preserve
+	 * WARNING: Can lead to memory leaks. Use destroyArray() instead for data you truly want GONE.
+	 *
+	 * @param	array		The array to clear out
+	 * @param	Recursive	Whether to search for arrays inside of arr and clear them out, too (false by default)
+	 */
+	public static function clearArray<T>(array:Array<T>, recursive:Bool = false):Void
+	{
+		if (array != null)
 		{
-			if (StartIndex < 0) StartIndex = 0;
-			if (Length < 0) Length = 0;
-			
-			var l:Int = Length;
-			if ((l == 0) || (l > Objects.length - StartIndex))
+			if (!recursive)
 			{
-				l = Objects.length - StartIndex;
+				while (array.length > 0)
+				{
+					array.pop();
+				}
 			}
-			if (l > 0)
+			else
 			{
-				return Objects[StartIndex + Std.int(FlxRandom.float() * l)];
+				while (array.length > 0)
+				{
+					var thing:T = array.pop();
+					if (Std.is(thing, Array))
+					{
+						clearArray(array, recursive);
+					}
+				}
 			}
 		}
-		return null;
+	}
+	
+	/**
+	 * Flattens 2D arrays into 1D arrays.
+	 * Example: [[1, 2], [3, 2], [1, 1]] -> [1, 2, 3, 2, 1, 1]
+	 */
+	@:generic
+	public static function flatten2DArray<T>(array:Array<Array<T>>):Array<T>
+	{
+		var result = [];
+		
+		for (innerArray in array)
+		{
+			result = result.concat(innerArray);
+		}
+		
+		return result;
+	}
+	
+	/**
+	 * Compares the contents with == to see if the two arrays are the same.
+	 * Also takes null arrays and the length of the arrays into account.
+	 */
+	public static function equals<T>(array1:Array<T>, array2:Array<T>):Bool
+	{
+		if (array1 == null && array2 == null)
+			return true;
+		if (array1 == null && array2 != null)
+			return false;
+		if (array1 != null && array2 == null)
+			return false;
+		if (array1.length != array2.length)
+			return false;
+		
+		for (i in 0...array1.length)
+		{
+			if (array1[i] != array2[i])
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	/**
+	 * Returns the last element of an array or null if the array is null / empty.
+	 */
+	public static function last<T>(array:Array<T>):Null<T>
+	{
+		if (array == null || array.length == 0)
+			return null;
+		return array[array.length - 1];
 	}
 }

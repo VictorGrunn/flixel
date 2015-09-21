@@ -1,27 +1,35 @@
 package flixel;
 
+import flash.display.Bitmap;
+import flash.display.BitmapData;
 import flash.display.Sprite;
 import flash.display.StageAlign;
 import flash.display.StageScaleMode;
 import flash.events.Event;
 import flash.events.FocusEvent;
+import flash.geom.ColorTransform;
+import flash.geom.Matrix;
 import flash.Lib;
+import flixel.effects.postprocess.PostProcess;
+import flixel.graphics.tile.FlxTilesheet;
+import flixel.math.FlxAngle;
+import flixel.math.FlxRandom;
 import flixel.system.FlxSplash;
-import flixel.system.layer.TileSheetExt;
 import flixel.system.replay.FlxReplay;
-import flixel.text.pxText.PxBitmapFont;
-import flixel.util.FlxRandom;
+import flixel.util.FlxArrayUtil;
+import flixel.util.FlxColor;
+import flixel.util.FlxDestroyUtil;
+import openfl.Assets;
 
-#if flash
-import flash.text.AntiAliasType;
-import flash.text.GridFitType;
+#if FLX_POST_PROCESS
+import openfl.display.OpenGLView;
 #end
 
 #if !FLX_NO_DEBUG
 import flixel.system.debug.FlxDebugger;
 #end
 
-#if !FLX_NO_SOUND_TRAY
+#if FLX_SOUND_TRAY
 import flixel.system.ui.FlxSoundTray;
 #end
 
@@ -35,49 +43,31 @@ import flixel.system.ui.FlxFocusLostScreen;
  * It is basically only used to create your game object in the first place,
  * after that FlxG and FlxState have all the useful stuff you actually need.
  */
+@:allow(flixel)
 class FlxGame extends Sprite
 {
 	/**
-	 * Time in milliseconds that has passed (amount of "ticks" passed) since the game has started.
+	 * Framerate to use on focus lost. Default = 10.
 	 */
-	public var ticks(default, null):Int = 0;
+	public var focusLostFramerate:Int = 10;
+	
+	#if FLX_RECORD
 	/**
-	 * Current game state.
+	 * Flag for whether a replay is currently playing.
 	 */
-	public var state:FlxState = null;
+	public var replaying(default, null):Bool = false;
 	/**
-	 * Mouse cursor.
+	 * Flag for whether a new recording is being made.
 	 */
-	public var inputContainer:Sprite;
+	public var recording(default, null):Bool = false;
+	#end
+	
+	#if FLX_SOUND_TRAY
 	/**
-	 * Milliseconds of time since last step. Supposed to be internal.
+	 * The sound tray display container (see createSoundTray()).
 	 */
-	public var elapsedMS:Int;
-	/**
-	 * Milliseconds of time per step of the game loop. FlashEvent.g. 60 fps = 16ms. Supposed to be internal.
-	 */
-	public var stepMS:Int;
-	/**
-	 * Optimization so we don't have to divide step by 1000 to get its value in seconds every frame. Supposed to be internal.
-	 */
-	public var stepSeconds:Float;
-	/**
-	 * Framerate of the Flash player (NOT the game loop). Default = 60.
-	 */
-	public var flashFramerate:Int;
-	/**
-	 * Max allowable accumulation (see _accumulator).
-	 * Should always (and automatically) be set to roughly 2x the flash player framerate.
-	 */
-	public var maxAccumulation:Int;
-	/**
-	 * If a state change was requested, the new state object is stored here until we switch to it.
-	 */
-	public var requestedState:FlxState = null;
-	/**
-	 * A flag for keeping track of whether a game reset was requested or not.
-	 */
-	public var requestedReset:Bool = true;
+	public var soundTray(default, null):FlxSoundTray;
+	#end
 	
 	#if !FLX_NO_DEBUG
 	/**
@@ -86,40 +76,25 @@ class FlxGame extends Sprite
 	public var debugger(default, null):FlxDebugger;
 	#end
 	
-	#if FLX_RECORD
 	/**
-	 * Container for a game replay object.
+	 * Time in milliseconds that has passed (amount of "ticks" passed) since the game has started.
 	 */
-	public var replay:FlxReplay;
-	/**
-	 * Flag for whether a playback of a recording was requested.
-	 */
-	public var replayRequested:Bool = false;
-	/**
-	 * Flag for whether a new recording was requested.
-	 */
-	public var recordingRequested:Bool = false;
-	/**
-	 * Flag for whether a replay is currently playing.
-	 */
-	public var replaying:Bool = false;
-	/**
-	 * Flag for whether a new recording is being made.
-	 */
-	public var recording:Bool = false;
-	#end
+	public var ticks(default, null):Int = 0;
 	
-	#if !FLX_NO_SOUND_TRAY
 	/**
-	 * The sound tray display container (see <code>createSoundTray()</code>).
+	 * A flag for triggering the onGameStart "event".
 	 */
-	public var soundTray(default, null):FlxSoundTray;
-	#end
+	@:allow(flixel.system.FlxSplash)
+	private var _gameJustStarted:Bool = false;
 	
 	/**
 	 * Class type of the initial/first game state for the game, usually MenuState or something like that.
 	 */
-	private var _iState:Class<FlxState>;
+	private var _initialState:Class<FlxState>;
+	/**
+	 * Current game state.
+	 */
+	private var _state:FlxState;
 	/**
 	 * Total number of milliseconds elapsed since game start.
 	 */
@@ -128,90 +103,165 @@ class FlxGame extends Sprite
 	 * Total number of milliseconds elapsed since last update loop.
 	 * Counts down as we step through the game loop.
 	 */
-	private var _accumulator:Int;
+	private var _accumulator:Float;
 	/**
-	 * Whether the Flash player lost focus.
+	 * Milliseconds of time since last step.
+	 */
+	private var _elapsedMS:Float;
+	/**
+	 * Milliseconds of time per step of the game loop. e.g. 60 fps = 16ms.
+	 */
+	private var _stepMS:Float;
+	/**
+	 * Optimization so we don't have to divide step by 1000 to get its value in seconds every frame.
+	 */
+	private var _stepSeconds:Float;
+	/**
+	 * Max allowable accumulation (see _accumulator).
+	 * Should always (and automatically) be set to roughly 2x the stage framerate.
+	 */
+	private var _maxAccumulation:Float;
+	
+	/**
+	 * Whether the game lost focus.
 	 */
 	private var _lostFocus:Bool = false;
 	
+	#if (cpp || neko)
+	/**
+	 * Ugly workaround to ensure consistent behaviour between flash and cpp 
+	 * (the focus event should not fire when the game starts up!)
+	 */ 
+	private var _onFocusFiredOnce:Bool = false;
+	#end
+	
 	#if !FLX_NO_FOCUS_LOST_SCREEN 
 	/**
-	 * The "focus lost" screen (see <code>createFocusScreen()</code>).
+	 * The "focus lost" screen (see createFocusScreen()).
 	 */
 	private var _focusLostScreen:FlxFocusLostScreen;
 	#end
 	
-	#if !FLX_NO_SOUND_TRAY
 	/**
-	 * Change this afterr calling super() in the FlxGame constructor to use a customized sound tray based on FlxSoundTray.
+	 * Mouse cursor.
+	 */
+	@:allow(flixel.FlxG)
+	@:allow(flixel.system.frontEnds.CameraFrontEnd)
+	private var _inputContainer:Sprite;
+	
+	#if FLX_SOUND_TRAY
+	/**
+	 * Change this after calling super() in the FlxGame constructor to use a customized sound tray based on FlxSoundTray.
 	 */
 	private var _customSoundTray:Class<FlxSoundTray> = FlxSoundTray;
 	#end
 	
 	#if !FLX_NO_FOCUS_LOST_SCREEN
 	/**
-	 * Change this afterr calling super() in the FlxGame constructor to use a customized sound tray based on FlxFocusLostScreen.
+	 * Change this after calling super() in the FlxGame constructor to use a customized screen which will be show when the application lost focus.
 	 */
 	private var _customFocusLostScreen:Class<FlxFocusLostScreen> = FlxFocusLostScreen;
 	#end
 	
-	#if (cpp && FLX_THREADING)
-	// push 'true' into this array to trigger an update. push 'false' to terminate update thread.
-	private var _stateSwitchRequested:Bool;
-	private var _threadSync:cpp.vm.Deque<Bool>;
+	/**
+	 * Whether the splash screen should be skipped.
+	 */
+	private var _skipSplash:Bool = false;
 	
-	private function threadedUpdate():Void 
-	{
-		while (_threadSync.pop(true))
-		{
-			update();
-		}
-	}
+	#if desktop
+	/**
+	 * Should we start Fullscreen or not? This is useful if you want to load Fullscreen settings from a FlxSave and set it when the game starts, instead of having it hard-set in your project XML.
+	 */
+	private var _startFullscreen:Bool = false; 
 	#end
 	
-	private var _skipSplash:Bool = false;
+	/**
+	 * If a state change was requested, the new state object is stored here until we switch to it.
+	 */
+	private var _requestedState:FlxState;
+	/**
+	 * A flag for keeping track of whether a game reset was requested or not.
+	 */
+	private var _resetGame:Bool = false;
+	
+	#if FLX_RECORD
+	/**
+	 * Container for a game replay object.
+	 */
+	private var _replay:FlxReplay;
+	/**
+	 * Flag for whether a playback of a recording was requested.
+	 */
+	private var _replayRequested:Bool = false;
+	/**
+	 * Flag for whether a new recording was requested.
+	 */
+	private var _recordingRequested:Bool = false;
+	#end
+	
+	#if FLX_RENDER_CRISP
+	private var _display:BitmapData;
+	private var _displayBitmap:Bitmap;
+	private var _displayMatrix = new Matrix();
+	private var _displayColorTransform = new ColorTransform();
+	#end
+	
+	#if FLX_POST_PROCESS
+	/**
+	 * Sprite for postprocessing effects
+	 */
+	private var postProcessLayer:Sprite = new Sprite();
+	/**
+	 * Post process effects active on the postProcessLayer
+	 */
+	private var postProcesses:Array<PostProcess> = [];
+	#end
 	
 	/**
 	 * Instantiate a new game object.
+	 * 
 	 * @param	GameSizeX		The width of your game in game pixels, not necessarily final display pixels (see Zoom).
 	 * @param	GameSizeY		The height of your game in game pixels, not necessarily final display pixels (see Zoom).
 	 * @param	InitialState	The class name of the state you want to create and switch to first (e.g. MenuState).
 	 * @param	Zoom			The default level of zoom for the game's cameras (e.g. 2 = all pixels are now drawn at 2x).  Default = 1.
-	 * @param	GameFramerate	How frequently the game should update (default is 60 times per second).
-	 * @param	FlashFramerate	Sets the actual display framerate for Flash player (default is 60 times per second).
+	 * @param	UpdateFramerate	How frequently the game should update (default is 60 times per second).
+	 * @param	DrawFramerate	Sets the actual display / draw framerate for the game (default is 60 times per second).
 	 * @param	SkipSplash		Whether you want to skip the flixel splash screen in FLX_NO_DEBUG or not.
+	 * @param	StartFullscreen	Whether to start the game in fullscreen mode (desktop targets only), false by default
 	 */
-	public function new(GameSizeX:Int, GameSizeY:Int, InitialState:Class<FlxState>, Zoom:Float = 1, GameFramerate:Int = 60, FlashFramerate:Int = 60, SkipSplash:Bool = false)
+	public function new(GameSizeX:Int = 640, GameSizeY:Int = 480, ?InitialState:Class<FlxState>, Zoom:Float = 1, UpdateFramerate:Int = 60, DrawFramerate:Int = 60, SkipSplash:Bool = false, StartFullscreen:Bool = false)
 	{
 		super();
 		
+		#if desktop
+		_startFullscreen = StartFullscreen;
+		#end
+		
 		// Super high priority init stuff
-		inputContainer = new Sprite();
+		_inputContainer = new Sprite();
 		
 		// Basic display and update setup stuff
 		FlxG.init(this, GameSizeX, GameSizeY, Zoom);
 		
-		FlxG.framerate = GameFramerate;
-		FlxG.flashFramerate = FlashFramerate;
-		_accumulator = stepMS;
+		FlxG.updateFramerate = UpdateFramerate;
+		FlxG.drawFramerate = DrawFramerate;
+		_accumulator = _stepMS;
 		_skipSplash = SkipSplash;
 		
 		#if FLX_RECORD
-		replay = new FlxReplay();
+		_replay = new FlxReplay();
 		#end
 		
 		// Then get ready to create the game object for real
-		_iState = InitialState;
+		_initialState = (InitialState == null) ? FlxState : InitialState;
 		
 		addEventListener(Event.ADDED_TO_STAGE, create);
 	}
 	
 	/**
 	 * Used to instantiate the guts of the flixel game object once we have a valid reference to the root.
-	 * 
-	 * @param	FlashEvent	Just a Flash system event, not too important for our purposes.
 	 */
-	private function create(FlashEvent:Event):Void
+	private function create(_):Void
 	{
 		if (stage == null)
 		{
@@ -219,25 +269,34 @@ class FlxGame extends Sprite
 		}
 		removeEventListener(Event.ADDED_TO_STAGE, create);
 		
-		_total = Lib.getTimer();
-
+		_total = getTimer();
+		
+		#if desktop
+		FlxG.fullscreen = _startFullscreen;
+		#end
+		
 		// Set up the view window and double buffering
 		stage.scaleMode = StageScaleMode.NO_SCALE;
 		stage.align = StageAlign.TOP_LEFT;
-		stage.frameRate = flashFramerate;
+		stage.frameRate = FlxG.drawFramerate;
 		
-		addChild(inputContainer);
+		addChild(_inputContainer);
+		
+		#if FLX_POST_PROCESS
+		if (OpenGLView.isSupported)
+			addChild(postProcessLayer);
+		#end
 		
 		// Creating the debugger overlay
 		#if !FLX_NO_DEBUG
-		debugger = new FlxDebugger(FlxG.width * FlxCamera.defaultZoom, FlxG.height * FlxCamera.defaultZoom);
+		debugger = new FlxDebugger(FlxG.stage.stageWidth, FlxG.stage.stageHeight);
 		addChild(debugger);
 		#end
 		
-	// Let mobile devs opt out of unnecessary overlays.
-	#if !mobile	
+		// No need for overlays on mobile.
+		#if !mobile
 		// Volume display tab
-		#if !FLX_NO_SOUND_TRAY
+		#if FLX_SOUND_TRAY
 		soundTray = Type.createInstance(_customSoundTray, []);
 		addChild(soundTray);
 		#end
@@ -246,33 +305,24 @@ class FlxGame extends Sprite
 		_focusLostScreen = Type.createInstance(_customFocusLostScreen, []);
 		addChild(_focusLostScreen);
 		#end
-	#end
+		#end
 		
 		// Focus gained/lost monitoring
-		#if flash
-		stage.addEventListener(Event.DEACTIVATE, onFocusLost);
-		stage.addEventListener(Event.ACTIVATE, onFocus);
-		#else
+		#if desktop
 		stage.addEventListener(FocusEvent.FOCUS_OUT, onFocusLost);
 		stage.addEventListener(FocusEvent.FOCUS_IN, onFocus);
+		#else
+		stage.addEventListener(Event.DEACTIVATE, onFocusLost);
+		stage.addEventListener(Event.ACTIVATE, onFocus);
 		#end
 		
 		// Instantiate the initial state
-		if (requestedReset)
-		{
-			resetGame();
-			switchState();
-			requestedReset = false;
-		}
+		resetGame();
+		switchState();
 		
-		#if (cpp && FLX_THREADING)
-		_threadSync = new cpp.vm.Deque();
-		cpp.vm.Thread.create(threadedUpdate);
-		#end
-		
-		if (FlxG.framerate < FlxG.flashFramerate)
+		if (FlxG.updateFramerate < FlxG.drawFramerate)
 		{
-			FlxG.log.warn("FlxG.flashFramerate: The game's framerate shouldn't be smaller than the flash framerate, since it can stop your game from updating.");
+			FlxG.log.warn("FlxG.updateFramerate: The update framerate shouldn't be smaller than the draw framerate, since it can slow down your game.");
 		}
 		
 		// Finally, set up an event for the actual game loop stuff.
@@ -281,21 +331,46 @@ class FlxGame extends Sprite
 		// We need to listen for resize event which means new context
 		// it means that we need to recreate bitmapdatas of dumped tilesheets
 		stage.addEventListener(Event.RESIZE, onResize);
+		
+		// make sure the cursor etc are properly scaled from the start
+		resizeGame(FlxG.stage.stageWidth, FlxG.stage.stageHeight);
+		
+		#if !bitfive
+		Assets.addEventListener(Event.CHANGE, FlxG.bitmap.onAssetsReload);
+		#end
 	}
 	
-	/**
-	 * Internal event handler for input and focus.
-	 * @param	FlashEvent	Flash event.
-	 */
-	private function onFocus(?FlashEvent:Event):Void
+	private function onFocus(_):Void
 	{
-		if (!FlxG.autoPause) 
+		#if flash
+		if (!_lostFocus) 
 		{
-			state.onFocus();
+			return; // Don't run this function twice (bug in standalone flash player)
+		}
+		#end
+		
+		#if desktop
+		// make sure the on focus event doesn't fire on startup 
+		if (!_onFocusFiredOnce)
+		{
+			_onFocusFiredOnce = true;
 			return;
 		}
+		#end
+		
+		#if mobile
+		// just check if device orientation has been changed
+		onResize(_);
+		#end
 		
 		_lostFocus = false;
+		FlxG.signals.focusGained.dispatch();
+		_state.onFocus();
+		
+		if (!FlxG.autoPause) 
+		{
+			return;
+		}
 		
 		#if !FLX_NO_FOCUS_LOST_SCREEN
 		if (_focusLostScreen != null)
@@ -304,24 +379,34 @@ class FlxGame extends Sprite
 		}
 		#end 
 		
-		stage.frameRate = flashFramerate;
-		FlxG.sound.resumeSounds();
+		#if !FLX_NO_DEBUG
+		debugger.stats.onFocus();
+		#end
+		
+		stage.frameRate = FlxG.drawFramerate;
+		#if !FLX_NO_SOUND_SYSTEM
+		FlxG.sound.onFocus();
+		#end
 		FlxG.inputs.onFocus();
 	}
 	
-	/**
-	 * Internal event handler for input and focus.
-	 * @param	FlashEvent	Flash event.
-	 */
-	private function onFocusLost(?FlashEvent:Event):Void
+	private function onFocusLost(_):Void
 	{
-		if (!FlxG.autoPause) 
+		#if flash
+		if (_lostFocus) 
 		{
-			state.onFocusLost();
-			return;
+			return; // Don't run this function twice (bug in standalone flash player)
 		}
+		#end
 		
 		_lostFocus = true;
+		FlxG.signals.focusLost.dispatch();
+		_state.onFocusLost();
+		
+		if (!FlxG.autoPause) 
+		{
+			return;
+		}
 		
 		#if !FLX_NO_FOCUS_LOST_SCREEN
 		if (_focusLostScreen != null)
@@ -330,58 +415,99 @@ class FlxGame extends Sprite
 		}
 		#end 
 		
-		stage.frameRate = 10;
-		FlxG.sound.pauseSounds();
+		#if !FLX_NO_DEBUG
+		debugger.stats.onFocusLost();
+		#end
+		
+		stage.frameRate = focusLostFramerate;
+		#if !FLX_NO_SOUND_SYSTEM
+		FlxG.sound.onFocusLost();
+		#end
 		FlxG.inputs.onFocusLost();
 	}
 	
-	private function onResize(E:Event):Void 
+	@:allow(flixel.FlxG)
+	private function onResize(_):Void 
 	{
-		var width:Int = Lib.current.stage.stageWidth;
-		var height:Int = Lib.current.stage.stageHeight;
+		var width:Int = FlxG.stage.stageWidth;
+		var height:Int = FlxG.stage.stageHeight;
 		
-		#if (desktop || mobile)
+		#if FLX_RENDER_TILE
 		FlxG.bitmap.onContext();
 		#end
 		
-		state.onResize(width, height);
-		FlxG.plugins.onResize(width, height);
+		resizeGame(width, height);
+	}
+	
+	private function resizeGame(width:Int, height:Int):Void
+	{
+		FlxG.resizeGame(width, height);
+		
+		_state.onResize(width, height);
+		FlxG.signals.gameResized.dispatch(width, height);
+		
+		FlxG.cameras.resize();
+		
+		#if FLX_RENDER_CRISP
+		FlxDestroyUtil.removeChild(this, _displayBitmap);
+		FlxDestroyUtil.dispose(_display);
+		
+		var index:Int = getChildIndex(_inputContainer);
+		_display = new BitmapData(width, height);
+		addChildAt(_displayBitmap = new Bitmap(_display), index);
+		#end
+		
 		#if !FLX_NO_DEBUG
 		debugger.onResize(width, height);
 		#end
 		
-		if (FlxG.autoResize)
+		#if !FLX_NO_FOCUS_LOST_SCREEN
+		if (_focusLostScreen != null)
 		{
-			FlxG.resizeGame(width, height);
+			_focusLostScreen.draw();
 		}
+		#end
+		
+		#if FLX_SOUND_TRAY
+		if (soundTray != null)
+		{
+			soundTray.screenCenter();
+		}
+		#end
+		
+		#if FLX_POST_PROCESS
+		for (postProcess in postProcesses)
+		{
+			postProcess.rebuild();
+		}
+		#end
 	}
 	
 	/**
 	 * Handles the onEnterFrame call and figures out how many updates and draw calls to do.
-	 * @param	FlashEvent	Flash event.
 	 */
-	private function onEnterFrame(?FlashEvent:Event):Void
+	private function onEnterFrame(_):Void
 	{
-		ticks = Lib.getTimer();
-		elapsedMS = ticks - _total;
+		ticks = getTimer();
+		_elapsedMS = ticks - _total;
 		_total = ticks;
 		
-		#if !FLX_NO_SOUND_TRAY
+		#if FLX_SOUND_TRAY
 		if (soundTray != null && soundTray.active)
 		{
-			soundTray.update(elapsedMS);
+			soundTray.update(_elapsedMS);
 		}
 		#end
 		
-		if (!_lostFocus)
+		if (!_lostFocus || !FlxG.autoPause)
 		{
-			if(FlxG.vcr.paused)
+			if (FlxG.vcr.paused)
 			{
 				if (FlxG.vcr.stepRequested)
 				{
 					FlxG.vcr.stepRequested = false;
 				}
-				else
+				else if (_state == _requestedState) // don't pause a state switch request
 				{
 					return;
 				}
@@ -389,17 +515,13 @@ class FlxGame extends Sprite
 			
 			if (FlxG.fixedTimestep)
 			{
-				_accumulator += elapsedMS;
-				if (_accumulator > maxAccumulation)
-				{
-					_accumulator = maxAccumulation;
-				}
-				// TODO: You may uncomment following lines
-				while (_accumulator > stepMS)
-				//while(_accumulator >= stepMS)
+				_accumulator += _elapsedMS;
+				_accumulator = (_accumulator > _maxAccumulation) ? _maxAccumulation : _accumulator;
+				
+				while (_accumulator >= _stepMS)
 				{
 					step();
-					_accumulator = _accumulator - stepMS; 
+					_accumulator -= _stepMS; 
 				}
 			}
 			else
@@ -408,20 +530,15 @@ class FlxGame extends Sprite
 			}
 			
 			#if !FLX_NO_DEBUG
-			FlxBasic._VISIBLECOUNT = 0;
+			FlxBasic.visibleCount = 0;
 			#end
 			
 			draw();
 			
 			#if !FLX_NO_DEBUG
-			if (FlxG.debugger.visible)
-			{
-				debugger.stats.flash(elapsedMS);
-				debugger.stats.visibleObjects(FlxBasic._VISIBLECOUNT);
-				debugger.stats.update();
-				debugger.watch.update();
-			}
-			#end	
+			debugger.stats.visibleObjects(FlxBasic.visibleCount);
+			debugger.update();
+			#end
 		}
 	}
 	
@@ -431,41 +548,38 @@ class FlxGame extends Sprite
 	 */
 	private inline function resetGame():Void
 	{
+		FlxG.signals.preGameReset.dispatch();
+		
 		#if !FLX_NO_DEBUG
-		requestNewState(Type.createInstance(_iState, []));
-		#else
-		if (_skipSplash)
+		_skipSplash = true;
+		#end
+		
+		if (_skipSplash || FlxSplash.nextState != null) // already played
 		{
-			requestNewState(Type.createInstance(_iState, []));
+			_requestedState = cast (Type.createInstance(_initialState, []));
+			if (FlxSplash.nextState == null)
+			{
+				_gameJustStarted = true;
+			}
 		}
 		else
 		{
-			requestNewState(new FlxSplash(_iState));
+			FlxSplash.nextState = _initialState;
+			_requestedState = new FlxSplash();
+			_skipSplash = true; // only play it once
 		}
-		#end
 		
 		#if !FLX_NO_DEBUG
-		if (Std.is(requestedState, FlxSubState))
+		if (Std.is(_requestedState, FlxSubState))
 		{
 			throw "You can't set FlxSubState class instance as the state for you game";
 		}
 		#end
 		
 		FlxG.reset();
-	}
-	
-	/**
-	 * Notify the game that we're about to switch states. 
-	 * INTERNAL, do not use this, call FlxG.switchState instead.
-	 */
-	public inline function requestNewState(newState:FlxState):Void
-	{
-		requestedState = newState;
 		
-		#if (cpp && FLX_THREADING)
-		_stateSwitchRequested = true;
-		#end
-	} 
+		FlxG.signals.postGameReset.dispatch();
+	}
 
 	/**
 	 * If there is a state change requested during the update loop,
@@ -475,42 +589,46 @@ class FlxGame extends Sprite
 	private function switchState():Void
 	{ 
 		// Basic reset stuff
-		PxBitmapFont.clearStorage();
 		FlxG.bitmap.clearCache();
 		FlxG.cameras.reset();
-		FlxG.inputs.reset();
-		FlxG.sound.destroySounds();
-		FlxG.plugins.onStateSwitch();
-		
-		#if !FLX_NO_DEBUG
-		// Clear the debugger overlay's Watch window
-		if (debugger != null)
-		{
-			debugger.watch.removeAll();
-		}
+		FlxG.inputs.onStateSwitch();
+		#if !FLX_NO_SOUND_SYSTEM
+		FlxG.sound.destroy();
 		#end
 		
-		#if !FLX_NO_MOUSE
-		var mouseVisibility:Bool = FlxG.mouse.visible || ((state != null) ? state.useMouse : false);
+		FlxG.signals.stateSwitched.dispatch();
+		
+		#if FLX_RECORD
+		FlxRandom.updateStateSeed();
 		#end
+		
 		// Destroy the old state (if there is an old state)
-		if (state != null)
+		if (_state != null)
 		{
-			state.destroy();
+			_state.destroy();
 		}
 		
 		// Finally assign and create the new state
-		state = requestedState;
+		_state = _requestedState;
 		
-		#if !FLX_NO_MOUSE
-		state.useMouse = mouseVisibility;
+		FlxG.signals.preStateCreate.dispatch(_state);
+		
+		_state.create();
+		
+		if (_gameJustStarted)
+		{
+			gameStart();
+		}
+		
+		#if !FLX_NO_DEBUG
+		debugger.console.registerObject("state", _state);
 		#end
-		
-		state.create();
-		
-		#if (cpp && FLX_THREADING) 
-		_stateSwitchRequested = false; 
-		#end
+	}
+	
+	private function gameStart():Void
+	{
+		FlxG.signals.gameStarted.dispatch();
+		_gameJustStarted = false;
 	}
 	
 	/**
@@ -522,18 +640,18 @@ class FlxGame extends Sprite
 	private function step():Void
 	{
 		// Handle game reset request
-		if (requestedReset)
+		if (_resetGame)
 		{
 			resetGame();
-			requestedReset = false;
+			_resetGame = false;
 		}
 		
 		#if FLX_RECORD
 		// Handle replay-related requests
-		if (recordingRequested)
+		if (_recordingRequested)
 		{
-			recordingRequested = false;
-			replay.create(FlxRandom.globalSeed);
+			_recordingRequested = false;
+			_replay.create(FlxRandom.getRecordingSeed());
 			recording = true;
 			
 			#if !FLX_NO_DEBUG
@@ -541,11 +659,11 @@ class FlxGame extends Sprite
 			FlxG.log.notice("Starting new flixel gameplay record.");
 			#end
 		}
-		else if (replayRequested)
+		else if (_replayRequested)
 		{
-			replayRequested = false;
-			replay.rewind();
-			FlxRandom.globalSeed = replay.seed;
+			_replayRequested = false;
+			_replay.rewind();
+			FlxG.random.initialSeed = _replay.seed;
 			
 			#if !FLX_NO_DEBUG
 			debugger.vcr.playingReplay();
@@ -557,20 +675,13 @@ class FlxGame extends Sprite
 		
 		#if !FLX_NO_DEBUG
 		// Finally actually step through the game physics
-		FlxBasic._ACTIVECOUNT = 0;
+		FlxBasic.activeCount = 0;
 		#end
 		
-		#if (cpp && FLX_THREADING)
-		_threadSync.push(true);
-		#else
 		update();
-		#end
 		
 		#if !FLX_NO_DEBUG
-		if (FlxG.debugger.visible)
-		{
-			debugger.stats.activeObjects(FlxBasic._ACTIVECOUNT);
-		}
+		debugger.stats.activeObjects(FlxBasic.activeCount);
 		#end
 	}
 	
@@ -580,7 +691,12 @@ class FlxGame extends Sprite
 	 */
 	private function update():Void
 	{
-		if (state != requestedState)
+		if (!_state.active || !_state.exists)
+		{
+			return;
+		}
+		
+		if (_state != _requestedState)
 		{
 			switchState();
 		}
@@ -588,33 +704,54 @@ class FlxGame extends Sprite
 		#if !FLX_NO_DEBUG
 		if (FlxG.debugger.visible)
 		{
-			ticks = Lib.getTimer(); // getTimer() is expensive, only do it if necessary
+			ticks = getTimer(); // Lib.getTimer() is expensive, only do it if necessary
 		}
 		#end
 		
+		FlxG.signals.preUpdate.dispatch();
+		
 		if (FlxG.fixedTimestep)
 		{
-			FlxG.elapsed = FlxG.timeScale * stepSeconds; // fixed timestep
+			FlxG.elapsed = FlxG.timeScale * _stepSeconds; // fixed timestep
 		}
 		else
 		{
-			FlxG.elapsed = FlxG.timeScale * (elapsedMS / 1000); // variable timestep
+			FlxG.elapsed = FlxG.timeScale * (_elapsedMS / 1000); // variable timestep
+			
+			var max = FlxG.maxElapsed * FlxG.timeScale;
+			if (FlxG.elapsed > max) 
+				FlxG.elapsed = max;
 		}
 		
 		updateInput();
 		
-		FlxG.sound.updateSounds();
-		FlxG.plugins.update();
+		#if FLX_POST_PROCESS
+		if (postProcesses[0] != null)
+		{
+			postProcesses[0].update(FlxG.elapsed);
+		}
+		#end
 		
-		state.tryUpdate(); // Update the current state
+		#if !FLX_NO_SOUND_SYSTEM
+		FlxG.sound.update(FlxG.elapsed);
+		#end
+		FlxG.plugins.update(FlxG.elapsed);
 		
-		FlxG.cameras.update();
+		_state.tryUpdate(FlxG.elapsed);
+		
+		FlxG.cameras.update(FlxG.elapsed);
+		FlxG.signals.postUpdate.dispatch();
 		
 		#if !FLX_NO_DEBUG
-		if (FlxG.debugger.visible)
+		debugger.stats.flixelUpdate(getTimer() - ticks);
+		#end
+		
+		#if FLX_POINTER_INPUT
+		for (swipe in FlxG.swipes)
 		{
-			debugger.stats.flixelUpdate(Lib.getTimer() - ticks);
+			swipe = null;
 		}
+		FlxArrayUtil.clearArray(FlxG.swipes);
 		#end
 	}
 	
@@ -623,11 +760,11 @@ class FlxGame extends Sprite
 		#if FLX_RECORD
 		if (replaying)
 		{
-			replay.playNextFrame();
+			_replay.playNextFrame();
 			
 			if (FlxG.vcr.timeout > 0)
 			{
-				FlxG.vcr.timeout -= stepMS;
+				FlxG.vcr.timeout -= _stepMS;
 				
 				if (FlxG.vcr.timeout <= 0)
 				{
@@ -643,7 +780,7 @@ class FlxGame extends Sprite
 				}
 			}
 			
-			if (replaying && replay.finished)
+			if (replaying && _replay.finished)
 			{
 				FlxG.vcr.stopReplay();
 				
@@ -655,7 +792,7 @@ class FlxGame extends Sprite
 			}
 			
 			#if !FLX_NO_DEBUG
-			debugger.vcr.updateRuntime(stepMS);
+			debugger.vcr.updateRuntime(_stepMS);
 			#end
 		}
 		else
@@ -668,10 +805,10 @@ class FlxGame extends Sprite
 		}
 		if (recording)
 		{
-			replay.recordFrame();
+			_replay.recordFrame();
 			
 			#if !FLX_NO_DEBUG
-			debugger.vcr.updateRuntime(stepMS);
+			debugger.vcr.updateRuntime(_stepMS);
 			#end
 		}
 		#end
@@ -682,61 +819,79 @@ class FlxGame extends Sprite
 	 */
 	private function draw():Void
 	{
+		if (!_state.visible || !_state.exists)
+		{
+			return;
+		}
+		
 		#if !FLX_NO_DEBUG
 		if (FlxG.debugger.visible)
 		{
 			// getTimer() is expensive, only do it if necessary
-			ticks = Lib.getTimer(); 
+			ticks = getTimer(); 
 		}
 		#end
-
-		#if !flash
-		TileSheetExt._DRAWCALLS = 0;
+		
+		FlxG.signals.preDraw.dispatch();
+		
+		#if FLX_RENDER_TILE
+		FlxTilesheet._DRAWCALLS = 0;
+		#end
+		
+		#if FLX_POST_PROCESS
+		if (postProcesses[0] != null)
+		{
+			postProcesses[0].capture();
+		}
 		#end
 		
 		FlxG.cameras.lock();
 		
-		#if (cpp && FLX_THREADING)
-		// Only draw the state if a new state hasn't been requested
-		if (!_stateSwitchRequested)
-		#end 
-		
 		FlxG.plugins.draw();
 		
-		#if !FLX_NO_DEBUG
-		if (FlxG.debugger.visualDebug)
-		{
-			FlxG.plugins.drawDebug();
-		}
-		#end
+		_state.draw();
 		
-		state.draw();
-		
-		#if !FLX_NO_DEBUG
-		if (FlxG.debugger.visualDebug)
-		{
-			state.drawDebug();
-		}
-		#end
-		
-		#if !flash
+		#if FLX_RENDER_TILE
 		FlxG.cameras.render();
 		
 		#if !FLX_NO_DEBUG
-		if (FlxG.debugger.visible)
-		{
-			debugger.stats.drawCalls(TileSheetExt._DRAWCALLS);
-		}
+		debugger.stats.drawCalls(FlxTilesheet._DRAWCALLS);
 		#end
 		#end
 		
+		#if FLX_RENDER_CRISP
+		_display.fillRect(_display.rect, FlxColor.TRANSPARENT);
+		
+		for (camera in FlxG.cameras.list)
+		{
+			_displayMatrix.identity();
+			_displayMatrix.scale(camera.zoom * FlxG.scaleMode.scale.x, camera.zoom * FlxG.scaleMode.scale.y);
+			_displayMatrix.translate(camera.x * FlxG.scaleMode.scale.x, camera.y * FlxG.scaleMode.scale.y);
+			
+			// rotate around center
+			if (camera.angle != 0)
+			{
+				_displayMatrix.translate( - _display.width >> 1, - _display.height >> 1);
+				_displayMatrix.rotate(camera.angle * FlxAngle.TO_RAD);
+				_displayMatrix.translate(_display.width >> 1, _display.height >> 1);
+			}
+			
+			_displayColorTransform.alphaMultiplier = camera.alpha;
+			_display.draw(camera.buffer, _displayMatrix, _displayColorTransform, null, null, camera.antialiasing);
+		}
+		#end
+	
 		FlxG.cameras.unlock();
 		
+		FlxG.signals.postDraw.dispatch();
+		
 		#if !FLX_NO_DEBUG
-		if (FlxG.debugger.visible)
-		{
-			debugger.stats.flixelDraw(Lib.getTimer() - ticks);
-		}
+		debugger.stats.flixelDraw(getTimer() - ticks);
 		#end
+	}
+	
+	private dynamic function getTimer():Int
+	{
+		return Lib.getTimer();
 	}
 }

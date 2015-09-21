@@ -1,72 +1,63 @@
 ﻿package flixel.tweens.misc;
 
+import flixel.FlxSprite;
 import flixel.tweens.FlxTween;
-import flixel.tweens.FlxEase;
-import flixel.util.FlxRandom;
+import flixel.math.FlxRandom;
 
 /**
  * Tweens from one angle to another.
  */
 class AngleTween extends FlxTween
 {
-	/**
-	 * The current value.
-	 */
-	public var angle:Float;
+	public var angle(default, null):Float;
 	
 	/**
-	 * Constructor.
-	 * @param	complete	Optional completion callback.
-	 * @param	type		Tween type.
+	 * Optional sprite object whose angle to tween
 	 */
-	public function new(complete:CompleteCallback = null, type:Int = 0) 
+	public var sprite(default, null):FlxSprite;
+	
+	private var _start:Float;
+	private var _range:Float;
+	
+	/**
+	 * Clean up references
+	 */
+	override public function destroy()
 	{
-		angle = 0;
-		super(0, type, complete);
+		super.destroy();
+		sprite = null;
 	}
 	
 	/**
 	 * Tweens the value from one angle to another.
-	 * @param	fromAngle		Start angle.
-	 * @param	toAngle			End angle.
-	 * @param	duration		Duration of the tween.
-	 * @param	ease			Optional easer function.
+	 * 
+	 * @param	FromAngle		Start angle.
+	 * @param	ToAngle			End angle.
+	 * @param	Duration		Duration of the tween.
 	 */
-	public function tween(fromAngle:Float, toAngle:Float, duration:Float, ease:EaseFunction = null):AngleTween
+	public function tween(FromAngle:Float, ToAngle:Float, Duration:Float, ?Sprite:FlxSprite):AngleTween
 	{
-		_start = angle = fromAngle;
-		var d:Float = toAngle - angle;
-		var a:Float = Math.abs(d);
-		if (a > 181) 
+		_start = angle = FromAngle;
+		_range = ToAngle - angle;
+		duration = Duration;
+		sprite = Sprite;
+		if (sprite != null)
 		{
-			_range = (360 - a) * (d > 0 ? -1 : 1);
+			sprite.angle = angle % 360;
 		}
-		else if (a < 179) 
-		{
-			_range = d;
-		}
-		else 
-		{
-			_range = FlxRandom.floatRanged(180, -180);
-		}
-		_target = duration;
-		_ease = ease;
 		start();
 		return this;
 	}
 	
-	/** @private Updates the Tween. */
-	override public function update():Void
+	override private function update(elapsed:Float):Void
 	{
-		super.update();
-		angle = (_start + _range * _t) % 360;
-		if (angle < 0) 
+		super.update(elapsed);
+		angle = _start + _range * scale;
+		
+		if (sprite != null)
 		{
-			angle += 360;
+			var spriteAngle:Float = angle % 360;
+			sprite.angle = spriteAngle;
 		}
 	}
-	
-	// Tween information.
-	private var _start:Float;
-	private var _range:Float;
 }

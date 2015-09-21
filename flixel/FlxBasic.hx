@@ -1,46 +1,22 @@
 package flixel;
 
+import flixel.util.FlxDestroyUtil.IFlxDestroyable;
 import flixel.util.FlxStringUtil;
 
 /**
- *  This class is for <code>FlxTypedGroup</code> to work with interface instead of <code>FlxBasic</code>, which is needed
- *  so that <code>FlxSpriteGroup</code> could extend <code>FlxTypedGroup</code> and be typed with <code>IFlxSprite</code>
- **/
-interface IFlxBasic 
-{
-	public var ID:Int;
-	public var exists:Bool;
-	public var alive:Bool;
-	public var active:Bool;
-	public var visible:Bool;
-	public var cameras:Array<FlxCamera>;
-	#if !FLX_NO_DEBUG
-	public var ignoreDrawDebug:Bool;
-	#end
-	
-	public function destroy():Void;
-	public function update():Void;
-	public function draw():Void;
-	#if !FLX_NO_DEBUG
-	public function drawDebug():Void;
-	public function drawDebugOnCamera(?Camera:FlxCamera):Void;
-	#end
-	
-	public function kill():Void;
-	public function revive():Void;
-	public function toString():String;
-}
-
-
-/**
- * This is a useful "generic" Flixel object. Both <code>FlxObject</code> and 
- * <code>FlxGroup</code> extend this class. Has no size, position or graphical data.
+ * This is a useful "generic" Flixel object. Both FlxObject and 
+ * FlxGroup extend this class. Has no size, position or graphical data.
  */
-class FlxBasic implements IFlxBasic
+class FlxBasic implements IFlxDestroyable
 {
 	#if !FLX_NO_DEBUG
-	static public var _ACTIVECOUNT:Int = 0;
-	static public var _VISIBLECOUNT:Int = 0;
+	/**
+	 * Static counters for performance tracking.
+	 */
+	@:allow(flixel.FlxGame)
+	private static var activeCount:Int = 0;
+	@:allow(flixel.FlxGame)
+	private static var visibleCount:Int = 0;
 	#end
 	
 	/**
@@ -49,106 +25,55 @@ class FlxBasic implements IFlxBasic
 	 */
 	public var ID:Int = -1;
 	/**
-	 * Controls whether <code>update()</code> and <code>draw()</code> are automatically called by FlxState/FlxGroup.
+	 * Controls whether update() is automatically called by FlxState/FlxGroup.
 	 */
-	public var exists:Bool = true;
+	public var active(default, set):Bool = true;
 	/**
-	 * Controls whether <code>update()</code> is automatically called by FlxState/FlxGroup.
+	 * Controls whether draw() is automatically called by FlxState/FlxGroup.
 	 */
-	public var active:Bool = true;
+	public var visible(default, set):Bool = true;
 	/**
-	 * Controls whether <code>draw()</code> is automatically called by FlxState/FlxGroup.
+	 * Useful state for many game objects - "dead" (!alive) vs alive. kill() and
+	 * revive() both flip this switch (along with exists, but you can override that).
 	 */
-	public var visible:Bool = true;
+	public var alive(default, set):Bool = true;
 	/**
-	 * Useful state for many game objects - "dead" (!alive) vs alive.
-	 * <code>kill()</code> and <code>revive()</code> both flip this switch (along with exists, but you can override that).
+	 * This flag indicates whether this objects has been destroyed or not. 
+	 * Cannot be set, use destroy() and revive().
 	 */
-	public var alive:Bool = true;
-	/**
-	 * An array of camera objects that this object will use during <code>draw()</code>. This value will initialize itself during the first draw to automatically
-	 * point at the main camera list out in <code>FlxG</code> unless you already set it. You can also change it afterward too, very flexible!
-	 */
-	public var cameras:Array<FlxCamera>;
+	public var exists(default, set):Bool = true;
 	
-	#if !FLX_NO_DEBUG
 	/**
-	 * Setting this to true will prevent the object from appearing
-	 * when the visual debug mode in the debugger overlay is toggled on.
+	 * Gets ot sets the first camera of this object.
 	 */
-	public var ignoreDrawDebug:Bool = false;
-	#end
-	
-	public function new() { }
-
+	public var camera(get, set):FlxCamera;
 	/**
-	 * WARNING: This will remove this object entirely. Use <code>kill()</code> if you want to disable it temporarily only and <code>reset()</code> it later to revive it.
+	 * This determines on which FlxCameras this object will be drawn. If it is null / has not been
+	 * set, it uses FlxCamera.defaultCameras, which is a reference to FlxG.cameras.list (all cameras) by default.
+	 */
+	public var cameras(get, set):Array<FlxCamera>;
+	
+	/**
+	 * Enum that informs the collision system which type of object this is (to avoid expensive type casting).
+	 */
+	private var flixelType(default, null):FlxType = NONE;
+	
+	private var _cameras:Array<FlxCamera>;
+	
+	public function new() {}
+	
+	/**
+	 * WARNING: This will remove this object entirely. Use kill() if you want to disable it temporarily only and revive() it later.
 	 * Override this function to null out variables manually or call destroy() on class members if necessary. Don't forget to call super.destroy()!
 	 */
-	public function destroy():Void { }
-	
-	/**
-	 * Override this function to update your class's position and appearance.
-	 * This is where most of your game rules and behavioral code will go.
-	 */
-	public function update():Void 
-	{ 
-		#if !FLX_NO_DEBUG
-		_ACTIVECOUNT++;
-		#end
-	}
-	
-	/**
-	 * Override this function to control how the object is drawn.
-	 * Overriding <code>draw()</code> is rarely necessary, but can be very useful.
-	 */
-	public function draw():Void
+	public function destroy():Void 
 	{
-		if (cameras == null)
-		{
-			cameras = FlxG.cameras.list;
-		}
-		var camera:FlxCamera;
-		var i:Int = 0;
-		var l:Int = cameras.length;
-		while(i < l)
-		{
-			camera = cameras[i++];
-			
-			#if !FLX_NO_DEBUG
-			_VISIBLECOUNT++;
-			#end
-		}
-	}
-	
-	#if !FLX_NO_DEBUG
-	public function drawDebug():Void
-	{
-		if (!ignoreDrawDebug)
-		{
-			var i:Int = 0;
-			if (cameras == null)
-			{
-				cameras = FlxG.cameras.list;
-			}
-			var l:Int = cameras.length;
-			while (i < l)
-			{
-				drawDebugOnCamera(cameras[i++]);
-			}
-		}
+		exists = false;
+		_cameras = null;
 	}
 	
 	/**
-	 * Override this function to draw custom "debug mode" graphics to the
-	 * specified camera while the debugger's visual mode is toggled on.
-	 * @param	Camera	Which camera to draw the debug visuals to.
-	 */
-	public function drawDebugOnCamera(?Camera:FlxCamera):Void { }
-	#end
-	
-	/**
-	 * Handy function for "killing" game objects. Use <code>reset()</code> to revive them. Default behavior is to flag them as nonexistent AND dead. However, if you want the 
+	 * Handy function for "killing" game objects. Use reset() to revive them. Default behavior is to flag them as nonexistent AND dead. However, if you want the 
 	 * "corpse" to remain in the game, like to animate an effect or whatever, you should override this, setting only alive to false, and leaving exists true.
 	 */
 	public function kill():Void
@@ -159,7 +84,7 @@ class FlxBasic implements IFlxBasic
 	
 	/**
 	 * Handy function for bringing game objects "back to life". Just sets alive and exists back to true.
-	 * In practice, this function is most often called by <code>FlxObject.reset()</code>.
+	 * In practice, this function is most often called by FlxObject.reset().
 	 */
 	public function revive():Void
 	{
@@ -168,10 +93,111 @@ class FlxBasic implements IFlxBasic
 	}
 	
 	/**
-	 * Convert object to readable string name.  Useful for debugging, save games, etc.
+	 * Override this function to update your class's position and appearance.
+	 * This is where most of your game rules and behavioral code will go.
 	 */
+	public function update(elapsed:Float):Void 
+	{ 
+		#if !FLX_NO_DEBUG
+		activeCount++;
+		#end
+	}
+	
+	/**
+	 * Override this function to control how the object is drawn.
+	 * Overriding draw() is rarely necessary, but can be very useful.
+	 */
+	public function draw():Void
+	{
+		#if !FLX_NO_DEBUG
+		visibleCount++;
+		#end
+	}
+	
 	public function toString():String
 	{
-		return FlxStringUtil.getClassName(this, true);
+		return FlxStringUtil.getDebugString([
+			LabelValuePair.weak("active", active),
+			LabelValuePair.weak("visible", visible),
+			LabelValuePair.weak("alive", alive),
+			LabelValuePair.weak("exists", exists)]);
 	}
+	
+	private function set_visible(Value:Bool):Bool
+	{
+		return visible = Value;
+	}
+	
+	private function set_active(Value:Bool):Bool
+	{
+		return active = Value;
+	}
+	
+	private function set_exists(Value:Bool):Bool
+	{
+		return exists = Value;
+	}
+	
+	private function set_alive(Value:Bool):Bool
+	{
+		return alive = Value;
+	}
+	
+	private function get_camera():FlxCamera
+	{
+		return (_cameras == null || _cameras.length == 0) ? FlxCamera.defaultCameras[0] : _cameras[0];
+	}
+	
+	private function set_camera(Value:FlxCamera):FlxCamera
+	{
+		if (_cameras == null)
+			_cameras = [Value];
+		else
+			_cameras[0] = Value;
+		return Value;
+	}
+	
+	private function get_cameras():Array<FlxCamera>
+	{
+		return (_cameras == null) ? FlxCamera.defaultCameras : _cameras;
+	}
+	
+	private function set_cameras(Value:Array<FlxCamera>):Array<FlxCamera>
+	{
+		return _cameras = Value;
+	}
+}
+
+/**
+ * Types of flixel objects - mainly for collisions.
+ * 
+ * Abstracted from an Int type for fast comparison code:
+ * http://nadako.tumblr.com/post/64707798715/cool-feature-of-upcoming-haxe-3-2-enum-abstracts
+ */
+@:enum
+abstract FlxType(Int)
+{
+	var NONE        = 0;
+	var OBJECT      = 1;
+	var GROUP       = 2;
+	var TILEMAP     = 3;
+	var SPRITEGROUP = 4;
+}
+
+interface IFlxBasic
+{
+	public var ID:Int;
+	public var active(default, set):Bool;
+	public var visible(default, set):Bool;
+	public var alive(default, set):Bool;
+	public var exists(default, set):Bool;
+
+	public function draw():Void;
+	public function update(elapsed:Float):Void;
+	public function destroy():Void;
+	
+	public function kill():Void;
+	public function revive():Void;
+	
+	public function toString():String;
 }

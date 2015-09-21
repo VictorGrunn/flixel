@@ -1,12 +1,12 @@
 package flixel.system.debug;
-#if !FLX_NO_DEBUG
 
+#if !FLX_NO_DEBUG
 import flash.geom.Rectangle;
 import flash.text.TextField;
 import flash.text.TextFormat;
 import flixel.FlxG;
-import flixel.system.FlxAssets;
-import flixel.util.FlxPoint;
+import flixel.system.debug.FlxDebugger;
+import flixel.math.FlxPoint;
 import flixel.util.FlxStringUtil;
 import haxe.ds.StringMap;
 
@@ -15,22 +15,18 @@ import haxe.ds.StringMap;
  */
 class Log extends Window
 {
-	static public var MAX_LOG_LINES:Int = 200;
+	public static inline var MAX_LOG_LINES:Int = 200;
+	private static inline var LINE_BREAK:String = #if js "\n" #else "<br>"#end; 
 
 	private var _text:TextField;
 	private var _lines:Array<String>;
 	
 	/**
-	 * Creates a new window object.  This Flash-based class is mainly (only?) used by <code>FlxDebugger</code>.
-	 * @param 	Title		The name of the window, displayed in the header bar.
-	 * @param 	Width		The initial width of the window.
-	 * @param 	Height		The initial height of the window.
-	 * @param 	Resizable	Whether you can change the size of the window with a drag handle.
-	 * @param 	Bounds		A rectangle indicating the valid screen area for the window.
+	 * Creates a log window object.
 	 */	
-	public function new(Title:String, Width:Float, Height:Float, Resizable:Bool = true, ?Bounds:Rectangle)
+	public function new()
 	{
-		super(Title, Width, Height, Resizable, Bounds);
+		super("Log", new GraphicLog(0, 0));
 		
 		_text = new TextField();
 		_text.x = 2;
@@ -43,8 +39,6 @@ class Log extends Window
 		addChild(_text);
 		
 		_lines = new Array<String>();
-		
-		FlxG.log.redirectTraces = true;
 	}
 	
 	/**
@@ -55,8 +49,9 @@ class Log extends Window
 		if (_text != null)
 		{
 			removeChild(_text);
+			_text = null;
 		}
-		_text = null;
+		
 		_lines = null;
 		super.destroy();
 	}
@@ -64,7 +59,7 @@ class Log extends Window
 	/**
 	 * Adds a new line to the log window.
 	 * @param 	Data		The data being logged.
-	 * @param 	Style		The <code>LogStyle</code> to be used for the log
+	 * @param 	Style		The LogStyle to be used for the log
 	 * @param 	FireOnce   	Whether you only want to log the Data in case it hasn't been added already
 	 */
 	public function add(Data:Array<Dynamic>, Style:LogStyle, FireOnce:Bool = false):Bool
@@ -79,51 +74,17 @@ class Log extends Window
 		// Format FlxPoints, Arrays, Maps or turn the Data entry into a String
 		for (i in 0...Data.length) 
 		{
-			if (Std.is(Data[i], FlxPoint)) 
-			{
-				texts[i] = FlxStringUtil.formatFlxPoint(Data[i], FlxG.debugger.pointPrecision);
-			}
-			else if (Std.is(Data[i], StringMap))
-			{
-				texts[i] = FlxStringUtil.formatStringMap(Data[i]);
-			}
-			else 
-			{
-				texts[i] = Std.string(Data[i]);
-			}
+			texts[i] = Std.string(Data[i]);
 			
 			// Make sure you can't insert html tags
-			texts[i] = StringTools.replace(texts[i], "<", "");
-			texts[i] = StringTools.replace(texts[i], ">", "");
+			texts[i] = StringTools.htmlEscape(texts[i]);
 		}
 		
-		var text:String = texts.join(" ");
-
+		var text:String = Style.prefix + texts.join(" ");
+		
+		// Apply text formatting
 		#if !js
-		// Create the text and apply color and styles
-		var prefix:String = "<font size='" + Style.size + "' color='#" + Style.color + "'>";
-		var suffix:String = "</font>";
-		
-		if (Style.bold) 
-		{
-			prefix = "<b>" + prefix;
-			suffix = suffix + "</b>";
-		}
-		if (Style.italic) 
-		{
-			prefix = "<i>" + prefix;
-			suffix = suffix + "</i>";
-		}
-		if (Style.underlined) 
-		{
-			prefix = "<u>" + prefix;
-			suffix = suffix + "</u>";
-		}
-		
-		// TODO: Make htmlText on HTML5 target
-		text = prefix + Style.prefix + text + suffix;
-		#else
-		text = Style.prefix + text;
+		text = FlxStringUtil.htmlFormat(text, Style.size, Style.color, Style.bold, Style.italic, Style.underlined);
 		#end
 		
 		// Check if the text has been added yet already
@@ -152,9 +113,9 @@ class Log extends Window
 			var newText:String = "";
 			for (i in 0..._lines.length) 
 			{
-				newText += _lines[i] + "<br>";
+				newText += _lines[i] + LINE_BREAK;
 			}
-			// TODO: Make htmlText on HTML5 target
+			// TODO: Make htmlText work on HTML5 target
 			#if !js
 			_text.htmlText = newText;
 			#else
@@ -163,19 +124,15 @@ class Log extends Window
 		}
 		else
 		{
-			// TODO: Make htmlText on HTML5 target
+			// TODO: Make htmlText work on HTML5 target
 			#if !js
-			_text.htmlText += (text + "<br>");
+			_text.htmlText += (text + LINE_BREAK);
 			#else
-			_text.text += text + "\n";
+			_text.text += text + LINE_BREAK;
 			#end
 		}
-		#if flash
-		_text.scrollV = Std.int(_text.maxScrollV);
-		#elseif !js
-		_text.scrollV = _text.maxScrollV - Std.int(_text.height / _text.defaultTextFormat.size) + 1;
-		#end
 		
+		_text.scrollV = Std.int(_text.maxScrollV);
 		return true;
 	}
 	

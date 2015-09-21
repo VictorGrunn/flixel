@@ -1,91 +1,114 @@
 package flixel.system;
 
+#if macro
+import haxe.macro.Context;
+import haxe.macro.Expr;
+import sys.FileSystem;
+using flixel.util.FlxArrayUtil;
+using StringTools;
+#else
 import flash.display.BitmapData;
 import flash.display.Graphics;
+import flash.media.Sound;
 import flash.text.Font;
-import openfl.Assets;
 import flixel.FlxG;
+import flixel.graphics.FlxGraphic;
+import flixel.graphics.frames.FlxAtlasFrames;
+import flixel.graphics.frames.FlxTileFrames;
+import flixel.graphics.frames.FlxFramesCollection;
+import flixel.graphics.frames.FlxFrame;
+import flixel.util.typeLimit.*;
+import openfl.Assets;
+import openfl.utils.ByteArray;
 
-@:font("assets/fonts/nokiafc22.ttf") private class FontDefault extends Font { }
-#if !FLX_NO_DEBUG
-@:font("assets/fonts/arial.ttf") private class FontDebugger extends Font { }
+@:keep @:bitmap("assets/images/logo/logo.png")
+class GraphicLogo extends BitmapData {}
+
+@:keep @:bitmap("assets/images/ui/virtual-input.png")
+class GraphicVirtualInput extends BitmapData {}
+
+@:file("assets/images/ui/virtual-input.txt")
+class VirtualInputData extends ByteArray {}
 #end
 
 class FlxAssets
 {
-	// debugger 
-	inline static public var IMG_WINDOW_HANDLE:String = "flixel/img/debugger/windowHandle.png";
-	inline static public var IMG_FLIXEL:String = "flixel/img/debugger/flixel.png";
-	
-	// debugger/buttons
-	inline static public var IMG_VISUAL_DEBUG:String = "flixel/img/debugger/buttons/visualDebug.png";
-	inline static public var IMG_WATCH_DEBUG:String = "flixel/img/debugger/buttons/watchDebug.png";
-	inline static public var IMG_STATS_DEBUG:String = "flixel/img/debugger/buttons/statsDebug.png";
-	inline static public var IMG_LOG_DEBUG:String = "flixel/img/debugger/buttons/logDebug.png";
-	inline static public var IMG_CONSOLE:String = "flixel/img/debugger/buttons/console.png";
-	inline static public var IMG_OPEN:String = "flixel/img/debugger/buttons/open.png";
-	inline static public var IMG_RECORD_OFF:String = "flixel/img/debugger/buttons/record_off.png";
-	inline static public var IMG_RECORD_ON:String = "flixel/img/debugger/buttons/record_on.png";
-	inline static public var IMG_STOP:String = "flixel/img/debugger/buttons/stop.png";
-	inline static public var IMG_RESTART:String = "flixel/img/debugger/buttons/restart.png";
-	inline static public var IMG_PAUSE:String = "flixel/img/debugger/buttons/pause.png";
-	inline static public var IMG_PLAY:String = "flixel/img/debugger/buttons/play.png";
-	inline static public var IMG_STEP:String = "flixel/img/debugger/buttons/step.png";
-	
-	// logo
-	inline static public var IMG_LOGO:String = "flixel/img/logo/logo.png";
-	inline static public var IMG_DEFAULT:String = "flixel/img/logo/default.png";
-	
-	// preloader
-	inline static public var IMG_CORNERS:String = "flixel/img/preloader/corners.png";
-	inline static public var IMG_LIGHT:String = "flixel/img/preloader/light.png";
-	
-	// tile
-	inline static public var IMG_AUTO:String = "flixel/img/tile/autotiles.png";
-	inline static public var IMG_AUTO_ALT:String = "flixel/img/tile/autotiles_alt.png";
-	
-	// ui
-	inline static public var IMG_BUTTON:String = "flixel/img/ui/button.png";
-	inline static public var IMG_CURSOR:String = "flixel/img/ui/cursor.png";
-
-	// ui/analog
-	inline static public var IMG_BASE:String = "flixel/img/ui/analog/base.png";
-	inline static public var IMG_THUMB:String = "flixel/img/ui/analog/thumb.png";
-
-	// ui/virtualpad
-	inline static public var IMG_BUTTON_A:String = "flixel/img/ui/virtualpad/a.png";
-	inline static public var IMG_BUTTON_B:String = "flixel/img/ui/virtualpad/b.png";
-	inline static public var IMG_BUTTON_C:String = "flixel/img/ui/virtualpad/c.png";
-	inline static public var IMG_BUTTON_X:String = "flixel/img/ui/virtualpad/x.png";
-	inline static public var IMG_BUTTON_Y:String = "flixel/img/ui/virtualpad/y.png";
-	inline static public var IMG_BUTTON_UP:String = "flixel/img/ui/virtualpad/up.png";
-	inline static public var IMG_BUTTON_DOWN:String = "flixel/img/ui/virtualpad/down.png";
-	inline static public var IMG_BUTTON_LEFT:String = "flixel/img/ui/virtualpad/left.png";
-	inline static public var IMG_BUTTON_RIGHT:String = "flixel/img/ui/virtualpad/right.png";
-	
-	// fonts
-	inline static public var FONT_DEFAULT:String = "Nokia Cellphone FC Small";
-	inline static public var FONT_DEBUGGER:String = "Arial";
-	
-	// sounds
-	inline static public var SND_FLIXEL:String = "flixel/snd/flixel.mp3";
-	
-	#if (flash || js)
-	inline static public var SND_BEEP:String = "flixel/snd/beep.mp3";
-	#else
-	inline static public var SND_BEEP:String = "flixel/snd/beep.wav";
-	#end
-	
-	static public function init():Void
+#if macro
+	/**
+	 * Reads files from a directory relative to this project and generates public static inlined
+	 * variables containing the string paths to the files in it. 
+	 * 
+	 * Example usage:
+	 * @:build(flixel.system.FlxAssets.buildFileReferences("assets/images"))
+	 * class Images {}
+	 * 
+	 * Mostly copied from:
+	 * @author Mark Knol
+	 * @see http://blog.stroep.nl/2014/01/haxe-macros/
+	 * 
+	 * @param   directory          The directory to scan for files
+	 * @param   subDirectories     Whether to include subdirectories
+	 * @param   filterExtensions   Example: ["jpg", "png", "gif"] will only add files with that extension. Null means: all extensions
+	 */
+	macro public static function buildFileReferences(directory:String = "assets/", subDirectories:Bool = false, ?filterExtensions:Array<String>):Array<Field>
 	{
-		Font.registerFont(FontDefault);
+		if (!directory.endsWith("/"))
+			directory += "/";
+			
+		var fileReferences:Array<FileReference> = getFileReferences(directory, subDirectories, filterExtensions);
 		
-		#if !FLX_NO_DEBUG
-		Font.registerFont(FontDebugger);
-		#end
+		var fields:Array<Field> = Context.getBuildFields();
+			
+		for (fileRef in fileReferences)
+		{
+			// create new field based on file references!
+			fields.push({
+				name: fileRef.name,
+				doc: fileRef.documentation,
+				access: [Access.APublic, Access.AStatic, Access.AInline],
+				kind: FieldType.FVar(macro:String, macro $v{ fileRef.value }),
+				pos: Context.currentPos()
+			});
+		}
+		return fields;
 	}
 	
-	static public function drawLogo(graph:Graphics):Void
+	private static function getFileReferences(directory:String, subDirectories:Bool = false, ?filterExtensions:Array<String>):Array<FileReference>
+	{
+		var fileReferences:Array<FileReference> = [];
+		var resolvedPath = #if ios Context.resolvePath(directory) #else directory #end;
+		var directoryInfo = FileSystem.readDirectory(resolvedPath);
+		for (name in directoryInfo)
+		{
+			if (!FileSystem.isDirectory(resolvedPath + name))
+			{
+				// ignore invisible files
+				if (name.startsWith("."))
+					continue;
+				
+				if (filterExtensions != null)
+				{
+					var extension:String = name.split(".")[1]; // get the string after the dot
+					if (filterExtensions.indexOf(extension) == -1)
+						continue;
+				}
+				
+				fileReferences.push(new FileReference(directory + name));
+			}
+			else if (subDirectories)
+			{
+				fileReferences = fileReferences.concat(getFileReferences(directory + name + "/", true, filterExtensions));
+			}
+		}
+		
+		return fileReferences;
+	}
+#else
+	// fonts
+	public static var FONT_DEFAULT:String = "Nokia Cellphone FC Small";
+	public static var FONT_DEBUGGER:String = "Arial";
+	
+	public static function drawLogo(graph:Graphics):Void
 	{
 		// draw green area
 		graph.beginFill(0x00b922);
@@ -141,32 +164,131 @@ class FlxAssets
 		graph.endFill();
 	}
 	
-	inline static public function getBitmapData(id:String):BitmapData
+	public static inline function getBitmapData(id:String):BitmapData
 	{
-		return Assets.getBitmapData(id, false);
+		if (Assets.exists(id))
+			return Assets.getBitmapData(id, false);
+		FlxG.log.error('Could not find a BitmapData asset with ID \'$id\'.');
+		return null;
 	}
 	
 	/**
-	 * Sound caching for android target
+	 * Generates BitmapData from specified class. Less typing.
+	 * 
+	 * @param	source	BitmapData class to generate BitmapData object from.
+	 * @return	Newly instantiated BitmapData object.
 	 */
-	static public function cacheSounds():Void
+	public static inline function getBitmapFromClass(source:Class<Dynamic>):BitmapData
 	{
-		#if android
-		Reflect.callMethod(Assets, Reflect.field(Assets, "initialize"), []);
-		
-		var resourceClasses:Map<String, Dynamic> = cast Reflect.getProperty(Assets, "resourceClasses");
-		var resourceTypes:Map<String, String> = cast Reflect.getProperty(Assets, "resourceTypes");
-		
-		if (resourceTypes != null)
+		return Type.createInstance(source, [0, 0]);
+	}
+	
+	/**
+	 * Takes Dynamic object as a input and tries to convert it to BitmapData:
+	 * 1) if the input is BitmapData, then it will return this BitmapData;
+	 * 2) if the input is Class<BitmapData>, then it will create BitmapData from this class;
+	 * 3) if the input is String, then it will get BitmapData from openfl.Assets;
+	 * 4) it will return null in any other case.
+	 * 
+	 * @param	Graphic	input data to get BitmapData object for.
+	 * @return	BitmapData for specified Dynamic object.
+	 */
+	public static function resolveBitmapData(Graphic:FlxGraphicSource):BitmapData
+	{
+		if (Std.is(Graphic, BitmapData))
 		{
-			for (key in resourceTypes.keys())
-			{
-				if (resourceTypes.get(key) == "sound")
-				{	
-					FlxG.sound.add(key);
-				}
-			}
+			return cast Graphic;
 		}
+		else if (Std.is(Graphic, Class))
+		{
+			return FlxAssets.getBitmapFromClass(cast Graphic);
+		}
+		else if (Std.is(Graphic, String))
+		{
+			return FlxAssets.getBitmapData(Graphic);
+		}
+		
+		return null;
+	}
+	
+	/**
+	 * Takes Dynamic object as a input and tries to find appropriate key String for its BitmapData:
+	 * 1) if the input is BitmapData, then it will return second (optional) argument (the Key);
+	 * 2) if the input is Class<BitmapData>, then it will return the name of this class;
+	 * 3) if the input is String, then it will return it;
+	 * 4) it will return null in any other case.
+	 * 
+	 * @param	Graphic	input data to get string key for.
+	 * @param	Key	optional key string.
+	 * @return	Key String for specified Graphic object.
+	 */
+	public static function resolveKey(Graphic:FlxGraphicSource, ?Key:String):String
+	{
+		if (Key != null)
+		{
+			return Key;
+		}
+		
+		if (Std.is(Graphic, BitmapData))
+		{
+			return Key;
+		}
+		else if (Std.is(Graphic, Class))
+		{
+			return FlxG.bitmap.getKeyForClass(cast Graphic);
+		}
+		else if (Std.is(Graphic, String))
+		{
+			return Graphic;
+		}
+		
+		return null;
+	}
+	
+	public static inline function getSound(id:String):Sound
+	{
+		var extension = "";
+		#if flash
+		extension = ".mp3";
+		#else
+		extension = ".ogg";
 		#end
+		return Assets.getSound(id + extension);
+	}
+	
+	public static function getVirtualInputFrames():FlxAtlasFrames
+	{
+		var graphic:FlxGraphic = FlxGraphic.fromClass(GraphicVirtualInput);
+		return FlxAtlasFrames.fromSpriteSheetPacker(graphic, Std.string(new VirtualInputData()));
+	}
+#end
+}
+
+#if macro
+private class FileReference
+{
+	public var name:String;
+	public var value:String;
+	public var documentation:String;
+	
+	public function new(value:String)
+	{
+		this.value = value;
+		
+		// replace some forbidden names to underscores, since variables cannot have these symbols.
+		this.name = value.split("-").join("_").split(".").join("__");
+		var split:Array<String> = name.split("/");
+		this.name = split.last();
+		
+		// auto generate documentation
+		this.documentation = "\"" + value + "\" (auto generated).";
 	}
 }
+#else
+typedef FlxAngelCodeSource = OneOfTwo<Xml, String>;
+typedef FlxSoundAsset = OneOfThree<String, Sound, Class<Sound>>;
+typedef FlxGraphicAsset = OneOfThree<FlxGraphic, BitmapData, String>;
+typedef FlxGraphicSource = OneOfThree<BitmapData, Class<Dynamic>, String>;
+typedef FlxTilemapGraphicAsset = OneOfFour<FlxFramesCollection, FlxGraphic, BitmapData, String>;
+typedef FlxBitmapFontGraphicAsset = OneOfFour<FlxFrame, FlxGraphic, BitmapData, String>;
+#end

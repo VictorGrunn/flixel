@@ -1,39 +1,57 @@
 package flixel.animation;
 
-import flixel.FlxSprite;
+import flixel.util.FlxDestroyUtil.IFlxDestroyable;
 
 /**
  * ...
  * @author Zaphod
  */
-class FlxBaseAnimation
+class FlxBaseAnimation implements IFlxDestroyable
 {
-	public var sprite:FlxSprite;
+	/**
+	 * Animation controller this animation belongs to
+	 */
+	public var parent:FlxAnimationController;
+	
+	/**
+	 * String name of the animation (e.g. "walk")
+	 */
+	public var name:String;
 	
 	/**
 	 * Keeps track of the current index into the tile sheet based on animation or rotation.
 	 * Allow access to private var from FlxAnimationController.
 	 */
-	public var curIndex:Int = 0;
+	public var curIndex(default, set):Int = 0;
 	
-	public function new(Sprite:FlxSprite)
+	private function set_curIndex(Value:Int):Int
 	{
-		sprite = Sprite;
+		curIndex = Value;
+		
+		if (parent != null && parent._curAnim == this)
+		{
+			parent.frameIndex = Value;
+		}
+		
+		return Value;
+	}
+	
+	public function new(Parent:FlxAnimationController, Name:String)
+	{
+		parent = Parent;
+		name = Name;
 	}
 	
 	public function destroy():Void
 	{
-		sprite = null;
+		parent = null;
+		name = null;
 	}
 	
-	public function update():Bool
-	{
-		return false;
-	}
+	public function update(elapsed:Float):Void {}
 	
-	public function clone(Sprite:FlxSprite):FlxBaseAnimation
+	public function clone(Parent:FlxAnimationController):FlxBaseAnimation
 	{
 		return null;
 	}
-	
 }

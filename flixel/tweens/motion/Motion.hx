@@ -2,12 +2,6 @@
 
 import flixel.FlxObject;
 import flixel.tweens.FlxTween;
-import flixel.tweens.FlxEase;
-
-typedef Movable = {
-	public var immovable(default, set):Bool;
-	public function setPosition(X:Float, Y:Float):Void;
-}
 
 /**
  * Base class for motion Tweens.
@@ -23,19 +17,8 @@ class Motion extends FlxTween
 	 */
 	public var y:Float = 0;
 	
-	private var _object:Movable;
-	
-	/**
-	 * Constructor.
-	 * @param	duration	Duration of the Tween.
-	 * @param	complete	Optional completion callback.
-	 * @param	type		Tween type.
-	 * @param	ease		Optional easer function.
-	 */
-	public function new(duration:Float, ?complete:CompleteCallback, type:Int = 0, ?ease:EaseFunction) 
-	{
-		super(duration, type, complete, ease);
-	}
+	private var _object:FlxObject;
+	private var _wasObjectImmovable:Bool;
 	
 	override public function destroy():Void 
 	{
@@ -43,24 +26,31 @@ class Motion extends FlxTween
 		_object = null;
 	}
 	
-	public function setObject(object:Movable):Dynamic
+	public function setObject(object:FlxObject):Motion
 	{
 		_object = object;
+		_wasObjectImmovable = _object.immovable;
 		_object.immovable = true;
 		return this;
 	}
 	
-	override public function update():Void 
+	override private function update(elapsed:Float):Void 
 	{
-		super.update();
+		super.update(elapsed);
 		postUpdate();
 	}
 	
-	public function postUpdate():Void
+	override private function onEnd():Void
+	{
+		_object.immovable = _wasObjectImmovable;
+		super.onEnd();
+	}
+	
+	private function postUpdate():Void
 	{
 		if (_object != null)
 		{
-			_object.setPosition(x, y); 
+			_object.setPosition(x, y);
 		}
 	}
 }
